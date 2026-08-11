@@ -14,8 +14,8 @@ export function SiteHeader() {
           <SignInButton mode="modal" />
         </Show>
         <Show when="signed-in">
-          <Link href="/dashboard" className="text-sm">
-            Dashboard
+          <Link href="/files" className="text-sm">
+            Files
           </Link>
           <UserButton />
         </Show>
