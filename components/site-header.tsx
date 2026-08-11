@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -8,6 +9,7 @@ export function SiteHeader() {
         infinite-draw
       </Link>
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <Show when="signed-out">
           <SignInButton mode="modal" />
         </Show>
