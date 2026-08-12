@@ -19,11 +19,11 @@ export function useFileVersions(fileId: string) {
   });
 
   const saveVersion = useMutation({
-    mutationFn: (name: string) =>
+    mutationFn: ({ name, thumbnailUrl }: { name: string; thumbnailUrl?: string }) =>
       apiClient(`/files/${fileId}/versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, thumbnailUrl }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["file", fileId, "versions"] });

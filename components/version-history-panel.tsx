@@ -11,7 +11,10 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { exportToBlob } from "@excalidraw/excalidraw";
 import { useFileVersions } from "@/hooks/use-file-versions";
+import { useFileQuery } from "@/hooks/use-file-query";
+import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 
 interface VersionHistoryPanelProps {
   fileId: string;
@@ -25,17 +28,30 @@ interface VersionHistoryPanelProps {
 
 export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelProps) {
   const { versionsQuery, saveVersion, restoreVersion } = useFileVersions(fileId);
+  const { data: file } = useFileQuery(fileId);
+  const uploadThumbnail = useThumbnailUpload(fileId);
   const [versionName, setVersionName] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  function handleSave() {
-    if (!versionName.trim()) return;
-    saveVersion.mutate(versionName.trim(), {
-      onSuccess: () => {
-        setVersionName("");
-        setSaveDialogOpen(false);
-      },
+  async function handleSave() {
+    if (!versionName.trim() || !file) return;
+
+    const blob = await exportToBlob({
+      elements: file.currentData.elements as never,
+      appState: { ...file.currentData.appState, exportBackground: true } as never,
+      files: null,
     });
+    const thumbnailUrl = await uploadThumbnail(blob);
+
+    saveVersion.mutate(
+      { name: versionName.trim(), thumbnailUrl },
+      {
+        onSuccess: () => {
+          setVersionName("");
+          setSaveDialogOpen(false);
+        },
+      },
+    );
   }
 
   function handleRestore(versionId: string) {
