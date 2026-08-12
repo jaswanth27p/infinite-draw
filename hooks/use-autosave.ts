@@ -85,6 +85,19 @@ export function useAutosave(fileId: string) {
         // without this check that kept re-arming the debounce timer
         // forever, producing an unbounded stream of byte-identical PATCH
         // requests while the file sat idle.
+        //
+        // This also covers "edited, then undone back to the last-saved
+        // state before the debounce timer fired": clear any stale
+        // pendingPayloadRef/timer from that earlier edit too, or the
+        // still-armed timer would later flush() the stale edit even
+        // though the canvas is back to what's already on the server.
+        // "Back to last-saved" must mean "nothing to send", not just
+        // "don't schedule more work".
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        pendingPayloadRef.current = null;
         return;
       }
       pendingPayloadRef.current = payload;

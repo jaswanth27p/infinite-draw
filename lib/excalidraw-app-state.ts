@@ -90,6 +90,22 @@ const TRANSIENT_APP_STATE_KEY_SET: ReadonlySet<string> = new Set(TRANSIENT_APP_S
  * Excalidraw `appState` before persisting it. Deliberately does NOT strip
  * anything that determines what's visually drawn (viewport pan/zoom,
  * background color, grid, last-used tool defaults, etc.) — those are kept.
+ *
+ * Two passes, deliberately not just one:
+ *  1. The name-based `TRANSIENT_APP_STATE_KEYS` list above, for fields
+ *     that are transient for *semantic* reasons (in-progress gestures,
+ *     open popovers) but are otherwise ordinary JSON-safe values.
+ *  2. A runtime `instanceof Map || instanceof Set` check, so that if a
+ *     future `@excalidraw/excalidraw` upgrade adds a *new* Map/Set-typed
+ *     `AppState` field, it gets caught automatically here even if nobody
+ *     remembers to add its name to the list above. `collaborators` and
+ *     `followedBy` are covered by both passes today (belt and suspenders);
+ *     this pass is the one that keeps covering the crash class in general.
+ *     NOTE: `reviveAppStateForLoad` below is intentionally NOT driven by
+ *     this same type check — its job is the opposite direction (rebuild
+ *     specific *known* fields as fresh empty collections on load), which
+ *     is inherently name-based. If you add a case here, check whether
+ *     `reviveAppStateForLoad` also needs the new field name.
  */
 export function sanitizeAppStateForSave(
   appState: Record<string, unknown>,
@@ -97,7 +113,9 @@ export function sanitizeAppStateForSave(
   const sanitized: Record<string, unknown> = {};
   for (const key of Object.keys(appState)) {
     if (TRANSIENT_APP_STATE_KEY_SET.has(key)) continue;
-    sanitized[key] = appState[key];
+    const value = appState[key];
+    if (value instanceof Map || value instanceof Set) continue;
+    sanitized[key] = value;
   }
   return sanitized;
 }
@@ -114,7 +132,11 @@ export function sanitizeAppStateForSave(
  *
  * This is the defensive half of the fix: it must hold even if
  * `sanitizeAppStateForSave` has a gap, or for rows written before this
- * fix existed.
+ * fix existed. Unlike `sanitizeAppStateForSave`'s Map/Set type check,
+ * this function is deliberately hardcoded to these two field names
+ * (there's no generic way to "discover" which fields should be revived
+ * as fresh collections) — if `AppState` ever gains another such field,
+ * add it to both this function AND `TRANSIENT_APP_STATE_KEYS` above.
  */
 export function reviveAppStateForLoad(
   appState: Record<string, unknown> | null | undefined,
