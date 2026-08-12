@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { exportToBlob } from "@excalidraw/excalidraw";
 import { useFileVersions } from "@/hooks/use-file-versions";
-import { useFileQuery } from "@/hooks/use-file-query";
+import { useFileQuery, type FileRecord } from "@/hooks/use-file-query";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 
 interface VersionHistoryPanelProps {
@@ -24,12 +25,28 @@ interface VersionHistoryPanelProps {
    * `updatedAt` changes must NOT trigger it, or the canvas would remount
    * and lose local view state on every autosave cycle). */
   onRestored: () => void;
+  /** Flushes the editor's pending debounced autosave, if any, and resolves
+   * once it lands. Awaited before exporting/saving a version so the
+   * snapshot and thumbnail reflect the latest edits rather than whatever
+   * was still sitting in the debounce buffer. */
+  flushAutosave: () => Promise<void>;
+  /** Clears the editor's pending debounced autosave without saving it.
+   * Called before restoring a version so a pending autosave (queued
+   * before the restore) can't fire afterward and clobber the
+   * just-restored currentData. */
+  cancelAutosave: () => void;
 }
 
-export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelProps) {
+export function VersionHistoryPanel({
+  fileId,
+  onRestored,
+  flushAutosave,
+  cancelAutosave,
+}: VersionHistoryPanelProps) {
   const { versionsQuery, saveVersion, restoreVersion } = useFileVersions(fileId);
   const { data: file } = useFileQuery(fileId);
   const uploadThumbnail = useThumbnailUpload(fileId);
+  const queryClient = useQueryClient();
   const [versionName, setVersionName] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // Covers the whole export -> upload -> save sequence, not just the
@@ -49,9 +66,19 @@ export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelP
     setIsSaving(true);
     setSaveError(null);
     try {
+      // Flush any pending debounced autosave first so both the exported
+      // thumbnail and the version snapshot the backend takes of
+      // File.currentData reflect the latest edits, not whatever was still
+      // sitting in the debounce buffer. Read the file back from the cache
+      // afterward rather than the `file` closed over above — that snapshot
+      // predates the flush and setQueryData's cache update doesn't
+      // retroactively update an already-captured render's variables.
+      await flushAutosave();
+      const latestFile = queryClient.getQueryData<FileRecord>(["file", fileId]) ?? file;
+
       const blob = await exportToBlob({
-        elements: file.currentData.elements as never,
-        appState: { ...file.currentData.appState, exportBackground: true } as never,
+        elements: latestFile.currentData.elements as never,
+        appState: { ...latestFile.currentData.appState, exportBackground: true } as never,
         files: null,
       });
       const thumbnailUrl = await uploadThumbnail(blob);
@@ -67,6 +94,11 @@ export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelP
   }
 
   function handleRestore(versionId: string) {
+    // Cancel (don't flush) any pending debounced autosave before
+    // restoring: a save queued right before the click would otherwise be
+    // able to land after the restore and clobber the just-restored
+    // currentData with stale pre-restore content.
+    cancelAutosave();
     restoreVersion.mutate(versionId, { onSuccess: onRestored });
   }
 
