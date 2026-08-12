@@ -8,6 +8,7 @@ import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ApiError } from "@/lib/api-client";
+import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw),
@@ -61,7 +62,14 @@ export function FileEditor({ fileId }: { fileId: string }) {
           key={remountKey}
           initialData={{
             elements: data!.currentData.elements as never,
-            appState: data!.currentData.appState,
+            // Reconstruct `collaborators`/`followedBy` as real Map/Set
+            // instances rather than passing through whatever was stored
+            // (persisted data never has real instances of either — see
+            // lib/excalidraw-app-state.ts). Excalidraw's InteractiveCanvas
+            // calls `.forEach` on `appState.collaborators` expecting a
+            // Map; a plain `{}` (or an absent key, for pre-fix rows)
+            // throws and permanently bricks this file's editor.
+            appState: reviveAppStateForLoad(data!.currentData.appState),
           }}
           onChange={(elements, appState) => {
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);

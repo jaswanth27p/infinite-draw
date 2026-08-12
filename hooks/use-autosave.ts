@@ -4,17 +4,27 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 import { useApiClient } from "@/lib/api-client";
 import type { FileRecord } from "@/hooks/use-file-query";
+import { sanitizeAppStateForSave } from "@/lib/excalidraw-app-state";
 
 const AUTOSAVE_DEBOUNCE_MS = 2500;
+
+type AutosavePayload = { elements: unknown[]; appState: Record<string, unknown> };
 
 export function useAutosave(fileId: string) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingPayloadRef = useRef<{ elements: unknown[]; appState: Record<string, unknown> } | null>(null);
+  const pendingPayloadRef = useRef<AutosavePayload | null>(null);
+  // JSON of the last payload that was *successfully* saved, used by
+  // scheduleSave to skip re-arming the debounce timer when Excalidraw's
+  // onChange fires with no real change (it fires on ephemeral/derived
+  // state too, not just real edits — see AUTOSAVE_DEBOUNCE_MS usage
+  // below). Deliberately updated only after the save resolves, not when
+  // it's merely scheduled/sent.
+  const lastSavedPayloadJsonRef = useRef<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (payload: { elements: unknown[]; appState: Record<string, unknown> }) =>
+    mutationFn: (payload: AutosavePayload) =>
       apiClient(`/files/${fileId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -47,6 +57,10 @@ export function useAutosave(fileId: string) {
     if (pending) {
       pendingPayloadRef.current = null;
       await mutateAsync(pending);
+      // Record the payload as saved only after the request resolves
+      // successfully — if it rejects, this is left stale on purpose so a
+      // later identical-looking scheduleSave call isn't wrongly skipped.
+      lastSavedPayloadJsonRef.current = JSON.stringify(pending);
     }
   }, [mutateAsync]);
 
@@ -60,7 +74,20 @@ export function useAutosave(fileId: string) {
 
   const scheduleSave = useCallback(
     (elements: unknown[], appState: Record<string, unknown>) => {
-      pendingPayloadRef.current = { elements, appState };
+      // Strip non-JSON-safe / purely interaction-transient appState
+      // fields (collaborators is a Map at runtime, etc.) before this
+      // payload ever reaches the network — see lib/excalidraw-app-state.ts.
+      const payload: AutosavePayload = { elements, appState: sanitizeAppStateForSave(appState) };
+      const payloadJson = JSON.stringify(payload);
+      if (payloadJson === lastSavedPayloadJsonRef.current) {
+        // No real change since the last successful save — Excalidraw's
+        // onChange fires on ephemeral/derived state changes too, and
+        // without this check that kept re-arming the debounce timer
+        // forever, producing an unbounded stream of byte-identical PATCH
+        // requests while the file sat idle.
+        return;
+      }
+      pendingPayloadRef.current = payload;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
