@@ -32,26 +32,38 @@ export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelP
   const uploadThumbnail = useThumbnailUpload(fileId);
   const [versionName, setVersionName] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  // Covers the whole export -> upload -> save sequence, not just the
+  // mutation itself, so a fast double-click can't fire two concurrent
+  // sequences and the button reflects "busy" from the first click onward.
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function handleSaveDialogOpenChange(open: boolean) {
+    setSaveDialogOpen(open);
+    if (open) setSaveError(null);
+  }
 
   async function handleSave() {
-    if (!versionName.trim() || !file) return;
+    if (!versionName.trim() || !file || isSaving) return;
 
-    const blob = await exportToBlob({
-      elements: file.currentData.elements as never,
-      appState: { ...file.currentData.appState, exportBackground: true } as never,
-      files: null,
-    });
-    const thumbnailUrl = await uploadThumbnail(blob);
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const blob = await exportToBlob({
+        elements: file.currentData.elements as never,
+        appState: { ...file.currentData.appState, exportBackground: true } as never,
+        files: null,
+      });
+      const thumbnailUrl = await uploadThumbnail(blob);
+      await saveVersion.mutateAsync({ name: versionName.trim(), thumbnailUrl });
 
-    saveVersion.mutate(
-      { name: versionName.trim(), thumbnailUrl },
-      {
-        onSuccess: () => {
-          setVersionName("");
-          setSaveDialogOpen(false);
-        },
-      },
-    );
+      setVersionName("");
+      setSaveDialogOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save version");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleRestore(versionId: string) {
@@ -66,7 +78,7 @@ export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelP
           <SheetTitle>Version history</SheetTitle>
         </SheetHeader>
 
-        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <Dialog open={saveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
           <DialogTrigger render={<Button size="sm" className="mx-4" />}>Save version</DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -77,8 +89,9 @@ export function VersionHistoryPanel({ fileId, onRestored }: VersionHistoryPanelP
               onChange={(e) => setVersionName(e.target.value)}
               placeholder="e.g. Before redesign"
             />
-            <Button onClick={handleSave} disabled={saveVersion.isPending}>
-              {saveVersion.isPending ? "Saving…" : "Save"}
+            {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving…" : "Save"}
             </Button>
           </DialogContent>
         </Dialog>

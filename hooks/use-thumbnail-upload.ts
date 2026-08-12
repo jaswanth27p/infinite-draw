@@ -8,11 +8,14 @@ export function useThumbnailUpload(fileId: string) {
 
   return useCallback(
     async (blob: Blob): Promise<string> => {
-      const key = `thumbnails/${fileId}.png`;
+      // Key derivation and content type are fixed server-side from fileId
+      // (see StorageController#presign) — this endpoint never accepts a
+      // free-form key, so a caller can't presign an upload for a file they
+      // don't own.
       const { uploadUrl } = await apiClient("/storage/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, contentType: "image/png" }),
+        body: JSON.stringify({ fileId }),
       });
 
       await fetch(uploadUrl, {
