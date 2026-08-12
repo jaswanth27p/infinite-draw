@@ -11,8 +11,12 @@ export function useThumbnailUpload(fileId: string) {
       // Key derivation and content type are fixed server-side from fileId
       // (see StorageController#presign) — this endpoint never accepts a
       // free-form key, so a caller can't presign an upload for a file they
-      // don't own.
-      const { uploadUrl } = await apiClient("/storage/presign", {
+      // don't own. The server also derives a fresh, unique key per call
+      // (thumbnails/${fileId}/${timestamp}.png) so each version's
+      // thumbnail gets its own object instead of overwriting the last
+      // one's — so the public URL must come from the response, not be
+      // re-derived client-side.
+      const { uploadUrl, publicUrl } = await apiClient("/storage/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileId }),
@@ -24,8 +28,7 @@ export function useThumbnailUpload(fileId: string) {
         body: blob,
       });
 
-      // Presigned PUT URLs strip query params for the resulting object URL.
-      return uploadUrl.split("?")[0];
+      return publicUrl as string;
     },
     [apiClient, fileId],
   );
