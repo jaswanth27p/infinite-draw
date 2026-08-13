@@ -31,14 +31,19 @@ export function useAutosave(fileId: string) {
         body: JSON.stringify({ currentData: payload }),
       }) as Promise<FileRecord>,
     onSuccess: (updatedFile) => {
-      // The PATCH response already is the fresh file record — write it
-      // straight into the cache instead of invalidating. Invalidating
-      // ["file", fileId] is prefix-based by default and would also
-      // invalidate ["file", fileId, "versions"], forcing the (always
-      // mounted) VersionHistoryPanel to re-fetch every historical
-      // version on every ~2.5s autosave tick, even though autosave never
-      // touches versions.
-      queryClient.setQueryData<FileRecord>(["file", fileId], updatedFile);
+      // Merge into the cache instead of invalidating or overwriting.
+      // Invalidating ["file", fileId] is prefix-based by default and
+      // would also invalidate ["file", fileId, "versions"], forcing the
+      // (always mounted) VersionHistoryPanel to re-fetch every
+      // historical version on every ~2.5s autosave tick, even though
+      // autosave never touches versions. A plain overwrite is wrong too:
+      // PATCH /files/:id returns the bare Prisma row, not the `role`/
+      // `generalAccess`/`generalAccessRole` fields GET computes and
+      // attaches — replacing the cache with that response would wipe
+      // those fields after the very first autosave.
+      queryClient.setQueryData<FileRecord>(["file", fileId], (old) =>
+        old ? { ...old, ...updatedFile } : old,
+      );
     },
   });
 
