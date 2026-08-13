@@ -10,18 +10,42 @@ interface FileListItem {
   updatedAt: string;
 }
 
-async function FileGrid() {
-  const files: FileListItem[] = await apiFetchServer("/files");
+interface SharedFileListItem extends FileListItem {
+  role: "EDITOR" | "VIEWER";
+  owner: { name: string | null; email: string };
+}
 
-  if (files.length === 0) {
-    return <p className="text-sm text-muted-foreground">No files yet — create one to get started.</p>;
-  }
+async function FileGrid() {
+  const { owned, sharedWithMe }: { owned: FileListItem[]; sharedWithMe: SharedFileListItem[] } =
+    await apiFetchServer("/files");
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-      {files.map((file) => (
-        <FileCard key={file.id} file={file} />
-      ))}
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-medium text-muted-foreground">My files</h2>
+        {owned.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No files yet — create one to get started.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {owned.map((file) => (
+              <FileCard key={file.id} file={file} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Shared with me</h2>
+        {sharedWithMe.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No files have been shared with you yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {sharedWithMe.map((file) => (
+              <FileCard key={file.id} file={file} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

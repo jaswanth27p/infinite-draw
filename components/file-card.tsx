@@ -2,7 +2,14 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface FileCardProps {
-  file: { id: string; name: string; thumbnailUrl: string | null; updatedAt: string };
+  file: {
+    id: string;
+    name: string;
+    thumbnailUrl: string | null;
+    updatedAt: string;
+    role?: "OWNER" | "EDITOR" | "VIEWER";
+    owner?: { name: string | null; email: string };
+  };
 }
 
 export function FileCard({ file }: FileCardProps) {
@@ -11,6 +18,11 @@ export function FileCard({ file }: FileCardProps) {
       <Card className="transition-colors hover:border-foreground/30">
         <CardHeader>
           <CardTitle className="truncate text-sm">{file.name}</CardTitle>
+          {file.owner && (
+            <p className="truncate text-xs text-muted-foreground">
+              Shared by {file.owner.name ?? file.owner.email} · {file.role === "EDITOR" ? "Editor" : "Viewer"}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {file.thumbnailUrl ? (
