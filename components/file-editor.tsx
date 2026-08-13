@@ -7,6 +7,7 @@ import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
+import { ShareDialog } from "@/components/share-dialog";
 import { ApiError } from "@/lib/api-client";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 
@@ -46,12 +47,16 @@ export function FileEditor({ fileId }: { fileId: string }) {
     throw error;
   }
 
+  const isViewer = data!.role === "VIEWER";
+
   return (
     <div className="relative flex flex-1 flex-col">
       <div className="flex items-center justify-end gap-2 border-b p-2">
         {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
+        {data!.role === "OWNER" && <ShareDialog fileId={fileId} />}
         <VersionHistoryPanel
           fileId={fileId}
+          canEdit={!isViewer}
           onRestored={() => setRemountKey((k) => k + 1)}
           flushAutosave={flush}
           cancelAutosave={cancel}
@@ -60,6 +65,7 @@ export function FileEditor({ fileId }: { fileId: string }) {
       <div className="relative flex-1">
         <Excalidraw
           key={remountKey}
+          viewModeEnabled={isViewer}
           initialData={{
             elements: data!.currentData.elements as never,
             // Reconstruct `collaborators`/`followedBy` as real Map/Set
@@ -72,6 +78,7 @@ export function FileEditor({ fileId }: { fileId: string }) {
             appState: reviveAppStateForLoad(data!.currentData.appState),
           }}
           onChange={(elements, appState) => {
+            if (isViewer) return;
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);
           }}
         />

@@ -19,6 +19,11 @@ import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 
 interface VersionHistoryPanelProps {
   fileId: string;
+  /** Viewers get a read-only history: the list is visible, but "Save
+   * version" and every "Restore" button are hidden — a Viewer can't
+   * mutate currentData, so offering controls that would 403 on click
+   * would just be confusing. */
+  canEdit: boolean;
   /** Called after a version is successfully restored, so the editor can
    * force a remount (Excalidraw's `initialData` only applies on mount —
    * this is the only signal that should trigger one; autosave's frequent
@@ -39,6 +44,7 @@ interface VersionHistoryPanelProps {
 
 export function VersionHistoryPanel({
   fileId,
+  canEdit,
   onRestored,
   flushAutosave,
   cancelAutosave,
@@ -110,23 +116,25 @@ export function VersionHistoryPanel({
           <SheetTitle>Version history</SheetTitle>
         </SheetHeader>
 
-        <Dialog open={saveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
-          <DialogTrigger render={<Button size="sm" className="mx-4" />}>Save version</DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Name this version</DialogTitle>
-            </DialogHeader>
-            <Input
-              value={versionName}
-              onChange={(e) => setVersionName(e.target.value)}
-              placeholder="e.g. Before redesign"
-            />
-            {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving…" : "Save"}
-            </Button>
-          </DialogContent>
-        </Dialog>
+        {canEdit && (
+          <Dialog open={saveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
+            <DialogTrigger render={<Button size="sm" className="mx-4" />}>Save version</DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Name this version</DialogTitle>
+              </DialogHeader>
+              <Input
+                value={versionName}
+                onChange={(e) => setVersionName(e.target.value)}
+                placeholder="e.g. Before redesign"
+              />
+              {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <ul className="mt-4 flex flex-col gap-2 px-4">
           {versionsQuery.data?.map((version) => (
@@ -134,14 +142,16 @@ export function VersionHistoryPanel({
               <span>
                 {version.name} — {new Date(version.createdAt).toLocaleString()}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRestore(version.id)}
-                disabled={restoreVersion.isPending}
-              >
-                Restore
-              </Button>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRestore(version.id)}
+                  disabled={restoreVersion.isPending}
+                >
+                  Restore
+                </Button>
+              )}
             </li>
           ))}
         </ul>
