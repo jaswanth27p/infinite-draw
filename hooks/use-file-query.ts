@@ -9,6 +9,9 @@ export interface FileRecord {
   currentData: { elements: unknown[]; appState: Record<string, unknown> };
   thumbnailUrl: string | null;
   updatedAt: string;
+  role: "OWNER" | "EDITOR" | "VIEWER";
+  generalAccess: "RESTRICTED" | "ANYONE";
+  generalAccessRole: "VIEWER" | "EDITOR" | null;
 }
 
 export function useFileQuery(fileId: string) {
