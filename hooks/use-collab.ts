@@ -1,16 +1,22 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { reconcileElements } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import type { AppState } from "@excalidraw/excalidraw/types";
+import type { AppState, Collaborator, SocketId } from "@excalidraw/excalidraw/types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+const CURSOR_THROTTLE_MS = 33;
 const FULL_RESYNC_INTERVAL_MS = 20_000;
 
 type Role = "OWNER" | "EDITOR" | "VIEWER";
+
+interface PointerPayload {
+  pointer: { x: number; y: number; tool: "pointer" | "laser" };
+  button: "down" | "up";
+}
 
 export function useCollab(
   fileId: string,
@@ -18,8 +24,10 @@ export function useCollab(
   onRemoteSceneUpdate: (elements: readonly ExcalidrawElement[]) => void,
 ) {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const socketRef = useRef<Socket | null>(null);
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
+  const [collaborators, setCollaborators] = useState<Map<SocketId, Collaborator>>(new Map());
 
   const broadcastedVersionsRef = useRef<Map<string, number>>(new Map());
   const localElementsRef = useRef<readonly ExcalidrawElement[]>([]);
@@ -30,6 +38,15 @@ export function useCollab(
   const roleRef = useRef(role);
   // eslint-disable-next-line react-hooks/refs
   roleRef.current = role;
+  // Sent as-is with every mouse-location broadcast so peers can label this
+  // user's cursor — cosmetic only, the server never reads or validates it.
+  const usernameRef = useRef<string | null>(null);
+  // eslint-disable-next-line react-hooks/refs
+  usernameRef.current = user?.fullName ?? null;
+  const pointerThrottleRef = useRef<{
+    timer: ReturnType<typeof setTimeout> | null;
+    pending: PointerPayload | null;
+  }>({ timer: null, pending: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +98,15 @@ export function useCollab(
           socket!.emit("scene-init", { fileId, elements: localElementsRef.current });
         }
 
+        const stillPresent = new Set(payload.collaborators);
         setCollaboratorIds(payload.collaborators.filter((id) => id !== socket!.id));
+        setCollaborators((prev) => {
+          const next = new Map(prev);
+          for (const id of next.keys()) {
+            if (!stillPresent.has(id)) next.delete(id);
+          }
+          return next;
+        });
       });
 
       socket.on("scene-init", (payload: { elements: ExcalidrawElement[] }) => {
@@ -90,6 +115,48 @@ export function useCollab(
       socket.on("scene-update", (payload: { elements: ExcalidrawElement[] }) => {
         if (!cancelled) reconcileAndApply(payload.elements);
       });
+
+      socket.on(
+        "mouse-location",
+        (payload: {
+          socketId: string;
+          pointer: { x: number; y: number };
+          button: "up" | "down";
+          selectedElementIds: Record<string, boolean>;
+          username: string | null;
+        }) => {
+          if (cancelled) return;
+          const socketId = payload.socketId as SocketId;
+          setCollaborators((prev) => {
+            const next = new Map(prev);
+            next.set(socketId, {
+              ...next.get(socketId),
+              pointer: { x: payload.pointer.x, y: payload.pointer.y, tool: "pointer" },
+              button: payload.button,
+              selectedElementIds: payload.selectedElementIds,
+              username: payload.username,
+              socketId,
+            } as Collaborator);
+            return next;
+          });
+        },
+      );
+      socket.on(
+        "idle-status",
+        (payload: { socketId: string; userState: "active" | "idle" | "away" }) => {
+          if (cancelled) return;
+          const socketId = payload.socketId as SocketId;
+          setCollaborators((prev) => {
+            const next = new Map(prev);
+            next.set(socketId, {
+              ...next.get(socketId),
+              socketId,
+              userState: payload.userState as unknown as Collaborator["userState"],
+            } as Collaborator);
+            return next;
+          });
+        },
+      );
 
       resyncInterval = setInterval(() => {
         if (
@@ -131,5 +198,27 @@ export function useCollab(
     [fileId],
   );
 
-  return { collaboratorIds, broadcastElements };
+  const broadcastPointer = useCallback(
+    (payload: PointerPayload) => {
+      if (roleRef.current === "VIEWER") return;
+      const state = pointerThrottleRef.current;
+      state.pending = payload;
+      if (state.timer) return;
+      state.timer = setTimeout(() => {
+        state.timer = null;
+        if (state.pending && socketRef.current?.connected) {
+          socketRef.current.emit("mouse-location", {
+            fileId,
+            pointer: { x: state.pending.pointer.x, y: state.pending.pointer.y },
+            button: state.pending.button,
+            selectedElementIds: {},
+            username: usernameRef.current,
+          });
+        }
+      }, CURSOR_THROTTLE_MS);
+    },
+    [fileId],
+  );
+
+  return { collaboratorIds, collaborators, broadcastElements, broadcastPointer };
 }
