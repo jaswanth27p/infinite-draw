@@ -92,7 +92,11 @@ export function useCollab(
       });
 
       resyncInterval = setInterval(() => {
-        if (socket?.connected && localElementsRef.current.length > 0) {
+        if (
+          socket?.connected &&
+          roleRef.current !== "VIEWER" &&
+          localElementsRef.current.length > 0
+        ) {
           socket.emit("scene-update", { fileId, elements: localElementsRef.current });
         }
       }, FULL_RESYNC_INTERVAL_MS);
