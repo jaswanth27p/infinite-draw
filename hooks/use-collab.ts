@@ -60,6 +60,9 @@ export function useCollab(
         {} as AppState,
       );
       localElementsRef.current = reconciled;
+      for (const el of reconciled) {
+        broadcastedVersionsRef.current.set(el.id, el.version);
+      }
       onRemoteSceneUpdateRef.current(reconciled);
     }
 
