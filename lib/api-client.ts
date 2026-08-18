@@ -37,7 +37,7 @@ export function useApiClient() {
         throw new ApiError(res.status);
       }
 
-      // A 204 (or any other empty body) has nothing to parse — calling
+      // A 204 has nothing to parse — calling
       // res.json() on an empty body throws "Unexpected end of JSON input",
       // which would otherwise make every no-content endpoint's caller hit
       // onError instead of onSuccess even though the request genuinely

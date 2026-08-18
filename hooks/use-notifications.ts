@@ -3,7 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { io, type Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 import { useApiClient } from "@/lib/api-client";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
@@ -28,7 +28,9 @@ export function useNotifications() {
   const { getToken } = useAuth();
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
-  const socketRef = useRef<Socket | null>(null);
+  const getTokenRef = useRef(getToken);
+  // eslint-disable-next-line react-hooks/refs
+  getTokenRef.current = getToken;
 
   const notificationsQuery = useQuery<NotificationsPage>({
     queryKey: ["notifications"],
@@ -63,13 +65,12 @@ export function useNotifications() {
     // connect/reconnect instead of replaying a stale one.
     const socket = io(WS_URL, {
       auth: (cb) => {
-        getToken().then(
+        getTokenRef.current().then(
           (token) => cb({ token }),
           () => cb({ token: null }),
         );
       },
     });
-    socketRef.current = socket;
 
     socket.on("connect_error", (err) => {
       console.error("[notifications] connect error", err);
@@ -97,9 +98,8 @@ export function useNotifications() {
     return () => {
       cancelled = true;
       socket.disconnect();
-      socketRef.current = null;
     };
-  }, [getToken, queryClient]);
+  }, [queryClient]);
 
   return {
     notifications: notificationsQuery.data?.items ?? [],
