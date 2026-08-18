@@ -9,6 +9,7 @@ import { useAutosave } from "@/hooks/use-autosave";
 import { useCollab } from "@/hooks/use-collab";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
+import { ChatPanel } from "@/components/chat-panel";
 import { ApiError } from "@/lib/api-client";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
@@ -39,12 +40,16 @@ export function FileEditor({ fileId }: { fileId: string }) {
     setLiveElements(elements);
   }, []);
   const getLiveAppState = useCallback(() => excalidrawApiRef.current?.getAppState(), []);
-  const { collaborators, broadcastElements, broadcastPointer } = useCollab(
-    fileId,
-    data?.role ?? "VIEWER",
-    handleRemoteSceneUpdate,
-    getLiveAppState,
-  );
+  const {
+    collaborators,
+    broadcastElements,
+    broadcastPointer,
+    messages,
+    ownMessageIds,
+    hasMoreMessages,
+    sendChatMessage,
+    loadOlderMessages,
+  } = useCollab(fileId, data?.role ?? "VIEWER", handleRemoteSceneUpdate, getLiveAppState);
 
   // Applied imperatively (not through `initialData`, which only applies
   // once at mount) so a remote peer's edits land on the live canvas
@@ -107,6 +112,13 @@ export function FileEditor({ fileId }: { fileId: string }) {
           onRestored={() => setRemountKey((k) => k + 1)}
           flushAutosave={flush}
           cancelAutosave={cancel}
+        />
+        <ChatPanel
+          messages={messages}
+          ownMessageIds={ownMessageIds}
+          hasMoreMessages={hasMoreMessages}
+          onSend={sendChatMessage}
+          onLoadOlder={loadOlderMessages}
         />
       </div>
       <div className="relative flex-1">
