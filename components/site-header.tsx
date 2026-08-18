@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function SiteHeader() {
   return (
@@ -14,6 +15,7 @@ export function SiteHeader() {
           <SignInButton mode="modal" />
         </Show>
         <Show when="signed-in">
+          <NotificationBell />
           <Link href="/files" className="text-sm">
             Files
           </Link>
