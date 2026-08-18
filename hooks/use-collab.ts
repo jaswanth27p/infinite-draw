@@ -6,6 +6,7 @@ import { io, type Socket } from "socket.io-client";
 import { reconcileElements } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { AppState, Collaborator, SocketId } from "@excalidraw/excalidraw/types";
+import { useApiClient } from "@/lib/api-client";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 const CURSOR_THROTTLE_MS = 33;
@@ -16,6 +17,20 @@ type Role = "OWNER" | "EDITOR" | "VIEWER";
 interface PointerPayload {
   pointer: { x: number; y: number; tool: "pointer" | "laser" };
   button: "down" | "up";
+}
+
+export interface ChatMessage {
+  id: string;
+  fileId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+interface MessagesPage {
+  items: ChatMessage[];
+  nextCursor: string | null;
 }
 
 export function useCollab(
@@ -30,6 +45,26 @@ export function useCollab(
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [collaborators, setCollaborators] = useState<Map<SocketId, Collaborator>>(new Map());
   const [connectionError, setConnectionError] = useState(false);
+  const apiClient = useApiClient();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [ownMessageIds, setOwnMessageIds] = useState<Set<string>>(new Set());
+  // Reset chat state synchronously during render when fileId changes —
+  // not in an effect (this repo's react-hooks/set-state-in-effect rule
+  // forbids a direct setState call there, and deferring the reset to an
+  // effect would briefly show the previous file's messages before the
+  // history fetch below resolves), and via a state value rather than a
+  // ref (this repo's react-hooks/refs rule forbids reading/writing a ref
+  // during render, which the classic ref-based version of this pattern
+  // needs). This is React's documented pattern for resetting state on a
+  // prop change: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevFileId, setPrevFileId] = useState(fileId);
+  if (fileId !== prevFileId) {
+    setPrevFileId(fileId);
+    setMessages([]);
+    setNextCursor(null);
+    setOwnMessageIds(new Set());
+  }
 
   const broadcastedVersionsRef = useRef<Map<string, number>>(new Map());
   const localElementsRef = useRef<readonly ExcalidrawElement[]>([]);
@@ -193,6 +228,11 @@ export function useCollab(
         },
       );
 
+      socket.on("chat-message", (message: ChatMessage) => {
+        if (cancelled) return;
+        setMessages((prev) => [message, ...prev]);
+      });
+
       resyncInterval = setInterval(() => {
         if (
           socket?.connected &&
@@ -213,6 +253,25 @@ export function useCollab(
       socketRef.current = null;
     };
   }, [fileId, getToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient(`/files/${fileId}/messages`).then(
+      (page: MessagesPage) => {
+        if (cancelled) return;
+        setMessages(page.items);
+        setNextCursor(page.nextCursor);
+      },
+      (err) => {
+        console.error("[collab] failed to load message history", err);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fileId, apiClient]);
 
   const broadcastElements = useCallback(
     (elements: readonly ExcalidrawElement[]) => {
@@ -255,5 +314,38 @@ export function useCollab(
     [fileId],
   );
 
-  return { collaboratorIds, collaborators, broadcastElements, broadcastPointer, connectionError };
+  const sendChatMessage = useCallback(
+    (body: string) => {
+      socketRef.current?.emit(
+        "send-chat-message",
+        { fileId, body },
+        (message: ChatMessage) => {
+          setOwnMessageIds((prev) => new Set(prev).add(message.id));
+        },
+      );
+    },
+    [fileId],
+  );
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!nextCursor) return;
+    const page: MessagesPage = await apiClient(
+      `/files/${fileId}/messages?cursor=${nextCursor}`,
+    );
+    setMessages((prev) => [...prev, ...page.items]);
+    setNextCursor(page.nextCursor);
+  }, [fileId, nextCursor, apiClient]);
+
+  return {
+    collaboratorIds,
+    collaborators,
+    broadcastElements,
+    broadcastPointer,
+    connectionError,
+    messages,
+    ownMessageIds,
+    hasMoreMessages: nextCursor !== null,
+    sendChatMessage,
+    loadOlderMessages,
+  };
 }
