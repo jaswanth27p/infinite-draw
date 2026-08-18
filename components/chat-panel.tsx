@@ -17,6 +17,7 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   ownMessageIds: Set<string>;
   hasMoreMessages: boolean;
+  isLoadingOlderMessages: boolean;
   onSend: (body: string) => void;
   onLoadOlder: () => void;
 }
@@ -25,6 +26,7 @@ export function ChatPanel({
   messages,
   ownMessageIds,
   hasMoreMessages,
+  isLoadingOlderMessages,
   onSend,
   onLoadOlder,
 }: ChatPanelProps) {
@@ -55,8 +57,8 @@ export function ChatPanel({
 
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4">
           {hasMoreMessages && (
-            <Button variant="ghost" size="sm" onClick={onLoadOlder}>
-              Load older messages
+            <Button variant="ghost" size="sm" onClick={onLoadOlder} disabled={isLoadingOlderMessages}>
+              {isLoadingOlderMessages ? "Loading…" : "Load older messages"}
             </Button>
           )}
           {messages.length === 0 && (
@@ -89,6 +91,7 @@ export function ChatPanel({
               }
             }}
             placeholder="Message…"
+            maxLength={4000}
           />
           <Button onClick={handleSend} disabled={!draft.trim()}>
             Send

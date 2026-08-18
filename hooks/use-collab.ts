@@ -49,6 +49,7 @@ export function useCollab(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [ownMessageIds, setOwnMessageIds] = useState<Set<string>>(new Set());
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   // Reset chat state synchronously during render when fileId changes —
   // not in an effect (this repo's react-hooks/set-state-in-effect rule
   // forbids a direct setState call there, and deferring the reset to an
@@ -260,7 +261,10 @@ export function useCollab(
     apiClient(`/files/${fileId}/messages`).then(
       (page: MessagesPage) => {
         if (cancelled) return;
-        setMessages(page.items);
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          return [...prev, ...page.items.filter((m) => !seen.has(m.id))];
+        });
         setNextCursor(page.nextCursor);
       },
       (err) => {
@@ -328,13 +332,20 @@ export function useCollab(
   );
 
   const loadOlderMessages = useCallback(async () => {
-    if (!nextCursor) return;
-    const page: MessagesPage = await apiClient(
-      `/files/${fileId}/messages?cursor=${nextCursor}`,
-    );
-    setMessages((prev) => [...prev, ...page.items]);
-    setNextCursor(page.nextCursor);
-  }, [fileId, nextCursor, apiClient]);
+    if (!nextCursor || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    try {
+      const page: MessagesPage = await apiClient(
+        `/files/${fileId}/messages?cursor=${nextCursor}`,
+      );
+      setMessages((prev) => [...prev, ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch (err) {
+      console.error("[collab] failed to load older messages", err);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [fileId, nextCursor, apiClient, isLoadingOlder]);
 
   return {
     collaboratorIds,
@@ -347,5 +358,6 @@ export function useCollab(
     hasMoreMessages: nextCursor !== null,
     sendChatMessage,
     loadOlderMessages,
+    isLoadingOlderMessages: isLoadingOlder,
   };
 }
