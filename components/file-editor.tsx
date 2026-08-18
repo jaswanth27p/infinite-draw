@@ -11,6 +11,7 @@ import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
 import { ApiError } from "@/lib/api-client";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
+import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -25,23 +26,38 @@ export function FileEditor({ fileId }: { fileId: string }) {
   const [remountKey, setRemountKey] = useState(0);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  // Last scene version (getSceneVersion) seen by onChange, used to skip
+  // redundant work (scheduleSave + broadcastElements) when onChange fires
+  // due to non-element appState changes only — e.g. the collaborators map
+  // being updated on every incoming remote cursor move (see the
+  // `updateScene({ collaborators })` effect below), which would otherwise
+  // re-run a full-scene JSON.stringify and version scan at ~30Hz per peer
+  // and keep resetting useAutosave's debounce timer.
+  const lastSceneVersionRef = useRef<number | null>(null);
 
   const handleRemoteSceneUpdate = useCallback((elements: readonly ExcalidrawElement[]) => {
     setLiveElements(elements);
   }, []);
+  const getLiveAppState = useCallback(() => excalidrawApiRef.current?.getAppState(), []);
   const { collaborators, broadcastElements, broadcastPointer } = useCollab(
     fileId,
     data?.role ?? "VIEWER",
     handleRemoteSceneUpdate,
+    getLiveAppState,
   );
 
   // Applied imperatively (not through `initialData`, which only applies
   // once at mount) so a remote peer's edits land on the live canvas
   // without remounting Excalidraw or disturbing local view state (zoom,
-  // scroll, selection).
+  // scroll, selection). `captureUpdate: NEVER` keeps this out of the local
+  // undo/redo history — undoing a remote peer's edit would revert their
+  // work and re-broadcast that revert.
   useEffect(() => {
     if (liveElements && excalidrawApiRef.current) {
-      excalidrawApiRef.current.updateScene({ elements: liveElements as never });
+      excalidrawApiRef.current.updateScene({
+        elements: liveElements as never,
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
     }
   }, [liveElements]);
 
@@ -112,9 +128,28 @@ export function FileEditor({ fileId }: { fileId: string }) {
             appState: reviveAppStateForLoad(data!.currentData.appState),
           }}
           onChange={(elements, appState) => {
+            // Skip entirely when the scene hasn't actually changed since
+            // the last onChange — e.g. this fired only because a remote
+            // peer's cursor moved (which updates the `collaborators` map
+            // via `updateScene` below, triggering onChange with the same
+            // elements). Real edits always bump at least one element's
+            // `version`, so `getSceneVersion` catches every genuine change
+            // while filtering out this collaboration-cursor noise.
+            const sceneVersion = getSceneVersion(elements);
+            if (sceneVersion === lastSceneVersionRef.current) return;
+            lastSceneVersionRef.current = sceneVersion;
+
+            // Always broadcast first, even for a Viewer: `broadcastElements`
+            // writes `localElementsRef` (the base used to reconcile the
+            // next incoming remote update) unconditionally and only skips
+            // the outgoing socket emit for VIEWER role. If a Viewer's
+            // `onChange` never calls this, `localElementsRef` stays `[]`
+            // forever, and the next remote delta reconciles against an
+            // empty base — wiping the canvas down to just the changed
+            // elements. See hooks/use-collab.ts's `broadcastElements`.
+            broadcastElements(elements);
             if (isViewer) return;
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);
-            broadcastElements(elements);
           }}
           onPointerUpdate={(payload) => {
             if (isViewer) return;

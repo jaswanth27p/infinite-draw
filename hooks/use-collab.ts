@@ -22,12 +22,14 @@ export function useCollab(
   fileId: string,
   role: Role,
   onRemoteSceneUpdate: (elements: readonly ExcalidrawElement[]) => void,
+  getAppState?: () => AppState | undefined,
 ) {
   const { getToken } = useAuth();
   const { user } = useUser();
   const socketRef = useRef<Socket | null>(null);
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [collaborators, setCollaborators] = useState<Map<SocketId, Collaborator>>(new Map());
+  const [connectionError, setConnectionError] = useState(false);
 
   const broadcastedVersionsRef = useRef<Map<string, number>>(new Map());
   const localElementsRef = useRef<readonly ExcalidrawElement[]>([]);
@@ -35,6 +37,9 @@ export function useCollab(
   const onRemoteSceneUpdateRef = useRef(onRemoteSceneUpdate);
   // eslint-disable-next-line react-hooks/refs
   onRemoteSceneUpdateRef.current = onRemoteSceneUpdate;
+  const getAppStateRef = useRef(getAppState);
+  // eslint-disable-next-line react-hooks/refs
+  getAppStateRef.current = getAppState;
   const roleRef = useRef(role);
   // eslint-disable-next-line react-hooks/refs
   roleRef.current = role;
@@ -57,7 +62,7 @@ export function useCollab(
       const reconciled = reconcileElements(
         localElementsRef.current as never,
         remoteElements as never,
-        {} as AppState,
+        (getAppStateRef.current?.() ?? {}) as AppState,
       );
       localElementsRef.current = reconciled;
       for (const el of reconciled) {
@@ -67,13 +72,40 @@ export function useCollab(
     }
 
     async function connect() {
-      const token = await getToken();
       if (cancelled) return;
 
-      socket = io(WS_URL, { auth: { token } });
+      // `auth` must be a FUNCTION (not a static object) so Socket.IO calls
+      // it again — minting a fresh Clerk token — on every connection
+      // attempt, not just the first. Clerk session tokens are short-lived
+      // (~60s); with a static `{ token }` object, every auto-reconnect
+      // after the first ~60s would replay the original (by then expired)
+      // token and get rejected by the server's auth guard.
+      socket = io(WS_URL, {
+        auth: (cb) => {
+          getToken().then(
+            (token) => cb({ token }),
+            () => cb({ token: null }),
+          );
+        },
+      });
       socketRef.current = socket;
 
+      socket.on("connect_error", (err) => {
+        console.error("[collab] connect error", err);
+        if (!cancelled) setConnectionError(true);
+      });
+      // Nest emits this for a rejected WsException (e.g. auth failure,
+      // stale/revoked file access) — without this listener those failures
+      // are entirely silent, the canvas just quietly stops collaborating.
+      socket.on("exception", (err) => {
+        console.error("[collab] server exception", err);
+      });
+      socket.on("disconnect", (reason) => {
+        console.error("[collab] disconnected", reason);
+      });
+
       socket.on("connect", () => {
+        setConnectionError(false);
         socket!.emit(
           "join-room",
           { fileId },
@@ -223,5 +255,5 @@ export function useCollab(
     [fileId],
   );
 
-  return { collaboratorIds, collaborators, broadcastElements, broadcastPointer };
+  return { collaboratorIds, collaborators, broadcastElements, broadcastPointer, connectionError };
 }
