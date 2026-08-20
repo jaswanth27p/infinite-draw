@@ -11,6 +11,7 @@ import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
 import { ChatPanel } from "@/components/chat-panel";
+import { VoiceControls } from "@/components/voice-controls";
 import { ApiError } from "@/lib/api-client";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
@@ -131,6 +132,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           onSend={sendChatMessage}
           onLoadOlder={loadOlderMessages}
         />
+        <VoiceControls fileId={fileId} collaborators={collaborators} />
       </div>
       <div className="relative flex-1">
         <Excalidraw
