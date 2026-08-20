@@ -162,14 +162,19 @@ export function useVoice(fileId: string) {
           const iceServers = await getIceServers();
           pc = createPeerConnection(fromSocketId, iceServers);
         }
-        await pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket?.emit("voice-signal", {
-          fileId,
-          targetSocketId: fromSocketId,
-          signal: { type: "answer", sdp: answer.sdp! },
-        });
+        try {
+          await pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket?.emit("voice-signal", {
+            fileId,
+            targetSocketId: fromSocketId,
+            signal: { type: "answer", sdp: answer.sdp! },
+          });
+        } catch (err) {
+          console.error(`[voice] failed to handle offer from ${fromSocketId}:`, err);
+          closePeer(fromSocketId);
+        }
       } else if (signal.type === "answer" && pc) {
         await pc.setRemoteDescription({ type: "answer", sdp: signal.sdp });
       } else if (signal.type === "candidate" && pc) {
