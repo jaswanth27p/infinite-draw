@@ -1,14 +1,13 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
 import { reconcileElements } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { AppState, Collaborator, SocketId } from "@excalidraw/excalidraw/types";
 import { useApiClient } from "@/lib/api-client";
+import { useFileSocket } from "@/hooks/file-socket-context";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 const CURSOR_THROTTLE_MS = 33;
 const FULL_RESYNC_INTERVAL_MS = 20_000;
 
@@ -39,26 +38,15 @@ export function useCollab(
   onRemoteSceneUpdate: (elements: readonly ExcalidrawElement[]) => void,
   getAppState?: () => AppState | undefined,
 ) {
-  const { getToken } = useAuth();
   const { user } = useUser();
-  const socketRef = useRef<Socket | null>(null);
+  const { socket, connectionError } = useFileSocket();
   const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
   const [collaborators, setCollaborators] = useState<Map<SocketId, Collaborator>>(new Map());
-  const [connectionError, setConnectionError] = useState(false);
   const apiClient = useApiClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [ownMessageIds, setOwnMessageIds] = useState<Set<string>>(new Set());
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
-  // Reset chat state synchronously during render when fileId changes —
-  // not in an effect (this repo's react-hooks/set-state-in-effect rule
-  // forbids a direct setState call there, and deferring the reset to an
-  // effect would briefly show the previous file's messages before the
-  // history fetch below resolves), and via a state value rather than a
-  // ref (this repo's react-hooks/refs rule forbids reading/writing a ref
-  // during render, which the classic ref-based version of this pattern
-  // needs). This is React's documented pattern for resetting state on a
-  // prop change: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [prevFileId, setPrevFileId] = useState(fileId);
   if (fileId !== prevFileId) {
     setPrevFileId(fileId);
@@ -79,8 +67,6 @@ export function useCollab(
   const roleRef = useRef(role);
   // eslint-disable-next-line react-hooks/refs
   roleRef.current = role;
-  // Sent as-is with every mouse-location broadcast so peers can label this
-  // user's cursor — cosmetic only, the server never reads or validates it.
   const usernameRef = useRef<string | null>(null);
   // eslint-disable-next-line react-hooks/refs
   usernameRef.current = user?.fullName ?? null;
@@ -89,9 +75,15 @@ export function useCollab(
     pending: PointerPayload | null;
   }>({ timer: null, pending: null });
 
+  // Subscribes this hook's listeners onto the shared connection from
+  // FileSocketProvider — the socket itself is opened/closed by the
+  // provider, not here. join-room stays here rather than in the provider:
+  // it's this hook's own room-membership bookkeeping (collaboratorIds,
+  // the scene-init decision below), and useVoice has no need for it —
+  // voice roster membership is tracked entirely separately server-side.
   useEffect(() => {
+    if (!socket) return;
     let cancelled = false;
-    let socket: Socket | null = null;
     let resyncInterval: ReturnType<typeof setInterval> | null = null;
 
     function reconcileAndApply(remoteElements: readonly ExcalidrawElement[]) {
@@ -107,153 +99,124 @@ export function useCollab(
       onRemoteSceneUpdateRef.current(reconciled);
     }
 
-    async function connect() {
-      if (cancelled) return;
-
-      // `auth` must be a FUNCTION (not a static object) so Socket.IO calls
-      // it again — minting a fresh Clerk token — on every connection
-      // attempt, not just the first. Clerk session tokens are short-lived
-      // (~60s); with a static `{ token }` object, every auto-reconnect
-      // after the first ~60s would replay the original (by then expired)
-      // token and get rejected by the server's auth guard.
-      socket = io(WS_URL, {
-        auth: (cb) => {
-          getToken().then(
-            (token) => cb({ token }),
-            () => cb({ token: null }),
-          );
-        },
-      });
-      socketRef.current = socket;
-
-      socket.on("connect_error", (err) => {
-        console.error("[collab] connect error", err);
-        if (!cancelled) setConnectionError(true);
-      });
-      // Nest emits this for a rejected WsException (e.g. auth failure,
-      // stale/revoked file access) — without this listener those failures
-      // are entirely silent, the canvas just quietly stops collaborating.
-      socket.on("exception", (err) => {
-        console.error("[collab] server exception", err);
-      });
-      socket.on("disconnect", (reason) => {
-        console.error("[collab] disconnected", reason);
-      });
-
-      socket.on("connect", () => {
-        setConnectionError(false);
-        socket!.emit(
-          "join-room",
-          { fileId },
-          (response: { event: "room-init"; data: { collaborators: string[] } }) => {
-            if (cancelled) return;
-            knownCollaboratorIdsRef.current = new Set(response.data.collaborators);
-            setCollaboratorIds(response.data.collaborators.filter((id) => id !== socket!.id));
-          },
-        );
-      });
-
-      socket.on("room-user-change", (payload: { collaborators: string[] }) => {
-        if (cancelled) return;
-
-        const newIds = payload.collaborators.filter(
-          (id) => id !== socket!.id && !knownCollaboratorIdsRef.current.has(id),
-        );
-        knownCollaboratorIdsRef.current = new Set(payload.collaborators);
-
-        if (
-          newIds.length > 0 &&
-          roleRef.current !== "VIEWER" &&
-          localElementsRef.current.length > 0
-        ) {
-          socket!.emit("scene-init", { fileId, elements: localElementsRef.current });
-        }
-
-        const stillPresent = new Set(payload.collaborators);
-        setCollaboratorIds(payload.collaborators.filter((id) => id !== socket!.id));
-        setCollaborators((prev) => {
-          const next = new Map(prev);
-          for (const id of next.keys()) {
-            if (!stillPresent.has(id)) next.delete(id);
-          }
-          return next;
-        });
-      });
-
-      socket.on("scene-init", (payload: { elements: ExcalidrawElement[] }) => {
-        if (!cancelled) reconcileAndApply(payload.elements);
-      });
-      socket.on("scene-update", (payload: { elements: ExcalidrawElement[] }) => {
-        if (!cancelled) reconcileAndApply(payload.elements);
-      });
-
-      socket.on(
-        "mouse-location",
-        (payload: {
-          socketId: string;
-          pointer: { x: number; y: number };
-          button: "up" | "down";
-          selectedElementIds: Record<string, boolean>;
-          username: string | null;
-        }) => {
+    function handleConnect() {
+      socket!.emit(
+        "join-room",
+        { fileId },
+        (response: { event: "room-init"; data: { collaborators: string[] } }) => {
           if (cancelled) return;
-          const socketId = payload.socketId as SocketId;
-          setCollaborators((prev) => {
-            const next = new Map(prev);
-            next.set(socketId, {
-              ...next.get(socketId),
-              pointer: { x: payload.pointer.x, y: payload.pointer.y, tool: "pointer" },
-              button: payload.button,
-              selectedElementIds: payload.selectedElementIds,
-              username: payload.username,
-              socketId,
-            } as Collaborator);
-            return next;
-          });
+          knownCollaboratorIdsRef.current = new Set(response.data.collaborators);
+          setCollaboratorIds(response.data.collaborators.filter((id) => id !== socket!.id));
         },
       );
-      socket.on(
-        "idle-status",
-        (payload: { socketId: string; userState: "active" | "idle" | "away" }) => {
-          if (cancelled) return;
-          const socketId = payload.socketId as SocketId;
-          setCollaborators((prev) => {
-            const next = new Map(prev);
-            next.set(socketId, {
-              ...next.get(socketId),
-              socketId,
-              userState: payload.userState as unknown as Collaborator["userState"],
-            } as Collaborator);
-            return next;
-          });
-        },
-      );
-
-      socket.on("chat-message", (message: ChatMessage) => {
-        if (cancelled) return;
-        setMessages((prev) => [message, ...prev]);
-      });
-
-      resyncInterval = setInterval(() => {
-        if (
-          socket?.connected &&
-          roleRef.current !== "VIEWER" &&
-          localElementsRef.current.length > 0
-        ) {
-          socket.emit("scene-update", { fileId, elements: localElementsRef.current });
-        }
-      }, FULL_RESYNC_INTERVAL_MS);
     }
 
-    void connect();
+    function handleRoomUserChange(payload: { collaborators: string[] }) {
+      if (cancelled) return;
+
+      const newIds = payload.collaborators.filter(
+        (id) => id !== socket!.id && !knownCollaboratorIdsRef.current.has(id),
+      );
+      knownCollaboratorIdsRef.current = new Set(payload.collaborators);
+
+      if (
+        newIds.length > 0 &&
+        roleRef.current !== "VIEWER" &&
+        localElementsRef.current.length > 0
+      ) {
+        socket!.emit("scene-init", { fileId, elements: localElementsRef.current });
+      }
+
+      const stillPresent = new Set(payload.collaborators);
+      setCollaboratorIds(payload.collaborators.filter((id) => id !== socket!.id));
+      setCollaborators((prev) => {
+        const next = new Map(prev);
+        for (const id of next.keys()) {
+          if (!stillPresent.has(id)) next.delete(id);
+        }
+        return next;
+      });
+    }
+
+    function handleSceneInit(payload: { elements: ExcalidrawElement[] }) {
+      if (!cancelled) reconcileAndApply(payload.elements);
+    }
+    function handleSceneUpdate(payload: { elements: ExcalidrawElement[] }) {
+      if (!cancelled) reconcileAndApply(payload.elements);
+    }
+
+    function handleMouseLocation(payload: {
+      socketId: string;
+      pointer: { x: number; y: number };
+      button: "up" | "down";
+      selectedElementIds: Record<string, boolean>;
+      username: string | null;
+    }) {
+      if (cancelled) return;
+      const socketId = payload.socketId as SocketId;
+      setCollaborators((prev) => {
+        const next = new Map(prev);
+        next.set(socketId, {
+          ...next.get(socketId),
+          pointer: { x: payload.pointer.x, y: payload.pointer.y, tool: "pointer" },
+          button: payload.button,
+          selectedElementIds: payload.selectedElementIds,
+          username: payload.username,
+          socketId,
+        } as Collaborator);
+        return next;
+      });
+    }
+
+    function handleIdleStatus(payload: { socketId: string; userState: "active" | "idle" | "away" }) {
+      if (cancelled) return;
+      const socketId = payload.socketId as SocketId;
+      setCollaborators((prev) => {
+        const next = new Map(prev);
+        next.set(socketId, {
+          ...next.get(socketId),
+          socketId,
+          userState: payload.userState as unknown as Collaborator["userState"],
+        } as Collaborator);
+        return next;
+      });
+    }
+
+    function handleChatMessage(message: ChatMessage) {
+      if (cancelled) return;
+      setMessages((prev) => [message, ...prev]);
+    }
+
+    socket.on("connect", handleConnect);
+    socket.on("room-user-change", handleRoomUserChange);
+    socket.on("scene-init", handleSceneInit);
+    socket.on("scene-update", handleSceneUpdate);
+    socket.on("mouse-location", handleMouseLocation);
+    socket.on("idle-status", handleIdleStatus);
+    socket.on("chat-message", handleChatMessage);
+
+    resyncInterval = setInterval(() => {
+      if (
+        socket?.connected &&
+        roleRef.current !== "VIEWER" &&
+        localElementsRef.current.length > 0
+      ) {
+        socket.emit("scene-update", { fileId, elements: localElementsRef.current });
+      }
+    }, FULL_RESYNC_INTERVAL_MS);
 
     return () => {
       cancelled = true;
       if (resyncInterval) clearInterval(resyncInterval);
-      socket?.disconnect();
-      socketRef.current = null;
+      socket.off("connect", handleConnect);
+      socket.off("room-user-change", handleRoomUserChange);
+      socket.off("scene-init", handleSceneInit);
+      socket.off("scene-update", handleSceneUpdate);
+      socket.off("mouse-location", handleMouseLocation);
+      socket.off("idle-status", handleIdleStatus);
+      socket.off("chat-message", handleChatMessage);
     };
-  }, [fileId, getToken]);
+  }, [socket, fileId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,9 +254,9 @@ export function useCollab(
       for (const el of changed) {
         broadcastedVersionsRef.current.set(el.id, el.version);
       }
-      socketRef.current?.emit("scene-update", { fileId, elements: changed });
+      socket?.emit("scene-update", { fileId, elements: changed });
     },
-    [fileId],
+    [fileId, socket],
   );
 
   const broadcastPointer = useCallback(
@@ -304,8 +267,8 @@ export function useCollab(
       if (state.timer) return;
       state.timer = setTimeout(() => {
         state.timer = null;
-        if (state.pending && socketRef.current?.connected) {
-          socketRef.current.emit("mouse-location", {
+        if (state.pending && socket?.connected) {
+          socket.emit("mouse-location", {
             fileId,
             pointer: { x: state.pending.pointer.x, y: state.pending.pointer.y },
             button: state.pending.button,
@@ -315,29 +278,23 @@ export function useCollab(
         }
       }, CURSOR_THROTTLE_MS);
     },
-    [fileId],
+    [fileId, socket],
   );
 
   const sendChatMessage = useCallback(
     (body: string) => {
-      socketRef.current?.emit(
-        "send-chat-message",
-        { fileId, body },
-        (message: ChatMessage) => {
-          setOwnMessageIds((prev) => new Set(prev).add(message.id));
-        },
-      );
+      socket?.emit("send-chat-message", { fileId, body }, (message: ChatMessage) => {
+        setOwnMessageIds((prev) => new Set(prev).add(message.id));
+      });
     },
-    [fileId],
+    [fileId, socket],
   );
 
   const loadOlderMessages = useCallback(async () => {
     if (!nextCursor || isLoadingOlder) return;
     setIsLoadingOlder(true);
     try {
-      const page: MessagesPage = await apiClient(
-        `/files/${fileId}/messages?cursor=${nextCursor}`,
-      );
+      const page: MessagesPage = await apiClient(`/files/${fileId}/messages?cursor=${nextCursor}`);
       setMessages((prev) => [...prev, ...page.items]);
       setNextCursor(page.nextCursor);
     } catch (err) {

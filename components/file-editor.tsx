@@ -7,6 +7,7 @@ import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useCollab } from "@/hooks/use-collab";
+import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
 import { ChatPanel } from "@/components/chat-panel";
@@ -22,6 +23,14 @@ const Excalidraw = dynamic(
 );
 
 export function FileEditor({ fileId }: { fileId: string }) {
+  return (
+    <FileSocketProvider fileId={fileId}>
+      <FileEditorContent fileId={fileId} />
+    </FileSocketProvider>
+  );
+}
+
+function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId);
   const [remountKey, setRemountKey] = useState(0);
