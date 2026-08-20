@@ -38,6 +38,20 @@ export function useVoice(fileId: string) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const iceServersRef = useRef<RTCIceServer[] | null>(null);
+  // True from the moment join-voice is emitted until leaveCall runs — NOT
+  // derived from the `inCall` state value, which only flips true after the
+  // join-voice ack returns. An incoming voice-user-joined/voice-signal/
+  // voice-mute-changed can arrive in the gap between emit and ack, and
+  // must still be gated the same way a not-in-call client would be.
+  const inCallRef = useRef(false);
+  // Guards joinCall against being invoked again before the first call's
+  // ack has returned.
+  const joinInFlightRef = useRef(false);
+  // Per-peer queue of ICE candidates that arrived before we had a peer
+  // connection for that sender, or before setRemoteDescription had
+  // resolved on it — drained immediately after setRemoteDescription
+  // succeeds in the offer branch below.
+  const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
 
   const getIceServers = useCallback(async (): Promise<RTCIceServer[]> => {
     if (iceServersRef.current) return iceServersRef.current;
@@ -52,6 +66,7 @@ export function useVoice(fileId: string) {
       pc.close();
       peersRef.current.delete(peerSocketId);
     }
+    pendingCandidatesRef.current.delete(peerSocketId);
     setRemoteStreams((prev) => {
       if (!prev.has(peerSocketId)) return prev;
       const next = new Map(prev);
@@ -68,13 +83,22 @@ export function useVoice(fileId: string) {
 
   const createPeerConnection = useCallback(
     (peerSocketId: string, iceServers: RTCIceServer[]) => {
+      const stream = localStreamRef.current;
+      if (!stream) {
+        // No local media to attach — this happens when a voice-user-joined/
+        // voice-signal event lands on a client that hasn't (or hasn't yet)
+        // joined the call. Refuse to create a real connection here; the
+        // call sites below bail out on a null return.
+        console.warn(
+          `[voice] refusing to create a peer connection to ${peerSocketId} — no local media stream`,
+        );
+        return null;
+      }
+
       const pc = new RTCPeerConnection({ iceServers });
 
-      const stream = localStreamRef.current;
-      if (stream) {
-        for (const track of stream.getTracks()) {
-          pc.addTrack(track, stream);
-        }
+      for (const track of stream.getTracks()) {
+        pc.addTrack(track, stream);
       }
 
       pc.onicecandidate = (event) => {
@@ -122,6 +146,7 @@ export function useVoice(fileId: string) {
     async (peerSocketId: string) => {
       const iceServers = await getIceServers();
       const pc = createPeerConnection(peerSocketId, iceServers);
+      if (!pc) return;
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socket?.emit("voice-signal", {
@@ -136,13 +161,32 @@ export function useVoice(fileId: string) {
   useEffect(() => {
     if (!socket) return;
 
+    async function drainPendingCandidates(peerSocketId: string, pc: RTCPeerConnection) {
+      const queued = pendingCandidatesRef.current.get(peerSocketId);
+      if (!queued || queued.length === 0) return;
+      pendingCandidatesRef.current.delete(peerSocketId);
+      for (const candidate of queued) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.error("[voice] failed to add queued ICE candidate", err);
+        }
+      }
+    }
+
     function handleVoiceUserJoined(payload: { socketId: string }) {
+      // The server broadcasts this to the whole file room, not just call
+      // participants — a client that has the file open but hasn't joined
+      // the call must not build a real peer connection for it.
+      if (!inCallRef.current) return;
       setParticipants((prev) =>
         prev.some((p) => p.socketId === payload.socketId)
           ? prev
           : [...prev, { socketId: payload.socketId, muted: false }],
       );
-      void initiateOfferTo(payload.socketId);
+      void initiateOfferTo(payload.socketId).catch((err) => {
+        console.error(`[voice] failed to initiate offer to ${payload.socketId}:`, err);
+      });
     }
 
     function handleVoiceUserLeft(payload: { socketId: string }) {
@@ -151,8 +195,9 @@ export function useVoice(fileId: string) {
     }
 
     async function handleVoiceSignal(payload: { fromSocketId: string; signal: VoiceSignal }) {
+      if (!inCallRef.current) return;
       const { fromSocketId, signal } = payload;
-      let pc = peersRef.current.get(fromSocketId);
+      let pc = peersRef.current.get(fromSocketId) ?? null;
 
       if (signal.type === "offer") {
         // First message from this peer — the newcomer's case, per the
@@ -161,9 +206,11 @@ export function useVoice(fileId: string) {
         if (!pc) {
           const iceServers = await getIceServers();
           pc = createPeerConnection(fromSocketId, iceServers);
+          if (!pc) return;
         }
         try {
           await pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
+          await drainPendingCandidates(fromSocketId, pc);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           socket?.emit("voice-signal", {
@@ -176,8 +223,23 @@ export function useVoice(fileId: string) {
           closePeer(fromSocketId);
         }
       } else if (signal.type === "answer" && pc) {
-        await pc.setRemoteDescription({ type: "answer", sdp: signal.sdp });
-      } else if (signal.type === "candidate" && pc) {
+        try {
+          await pc.setRemoteDescription({ type: "answer", sdp: signal.sdp });
+          await drainPendingCandidates(fromSocketId, pc);
+        } catch (err) {
+          console.error(`[voice] failed to handle answer from ${fromSocketId}:`, err);
+        }
+      } else if (signal.type === "candidate") {
+        // Queue instead of applying when there's no peer connection yet
+        // for this sender, or its remoteDescription hasn't landed yet —
+        // otherwise a candidate that races ahead of (or arrives mid-await
+        // of) setRemoteDescription is silently dropped.
+        if (!pc || !pc.remoteDescription) {
+          const queue = pendingCandidatesRef.current.get(fromSocketId) ?? [];
+          queue.push(signal.candidate);
+          pendingCandidatesRef.current.set(fromSocketId, queue);
+          return;
+        }
         await pc.addIceCandidate(signal.candidate).catch((err) => {
           console.error("[voice] failed to add ICE candidate", err);
         });
@@ -185,6 +247,7 @@ export function useVoice(fileId: string) {
     }
 
     function handleVoiceMuteChanged(payload: { socketId: string; muted: boolean }) {
+      if (!inCallRef.current) return;
       setParticipants((prev) =>
         prev.map((p) => (p.socketId === payload.socketId ? { ...p, muted: payload.muted } : p)),
       );
@@ -204,10 +267,13 @@ export function useVoice(fileId: string) {
   }, [socket, fileId, initiateOfferTo, createPeerConnection, closePeer, getIceServers]);
 
   const leaveCall = useCallback(() => {
+    inCallRef.current = false;
+    joinInFlightRef.current = false;
     socket?.emit("leave-voice", { fileId });
     for (const peerSocketId of Array.from(peersRef.current.keys())) {
       closePeer(peerSocketId);
     }
+    pendingCandidatesRef.current.clear();
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
     setLocalStream(null);
@@ -217,12 +283,18 @@ export function useVoice(fileId: string) {
   }, [fileId, socket, closePeer]);
 
   const joinCall = useCallback(async () => {
+    // Guard against re-entry: either already in a call, or a previous
+    // joinCall() is still awaiting its ack.
+    if (inCallRef.current || joinInFlightRef.current) return;
+    joinInFlightRef.current = true;
+
     setCallFullError(false);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
       console.error("[voice] microphone access denied", err);
+      joinInFlightRef.current = false;
       return;
     }
     localStreamRef.current = stream;
@@ -235,8 +307,23 @@ export function useVoice(fileId: string) {
       console.error("[voice] failed to fetch TURN credentials", err);
     });
 
-    socket?.emit("join-voice", { fileId }, (ack: JoinVoiceAck) => {
+    if (!socket) {
+      joinInFlightRef.current = false;
+      stream.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+      setLocalStream(null);
+      return;
+    }
+
+    // Flip this the moment join-voice is emitted, not when the ack
+    // returns — an incoming voice-user-joined/voice-signal/voice-mute-changed
+    // can arrive in the gap between emit and ack and must already treat us
+    // as in the call so it doesn't skip building a real peer connection.
+    inCallRef.current = true;
+    socket.emit("join-voice", { fileId }, (ack: JoinVoiceAck) => {
+      joinInFlightRef.current = false;
       if (!ack.joined) {
+        inCallRef.current = false;
         setCallFullError(ack.reason === "full");
         stream.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
@@ -262,13 +349,22 @@ export function useVoice(fileId: string) {
     socket?.emit("voice-mute-changed", { fileId, muted: nextMuted });
   }, [fileId, socket, localMuted]);
 
+  const leaveCallRef = useRef(leaveCall);
+  // eslint-disable-next-line react-hooks/refs
+  leaveCallRef.current = leaveCall;
+
   // A user can't be "in a call" on a file whose editor they've navigated
-  // away from — leave automatically on fileId change or unmount.
+  // away from — leave automatically on fileId change or unmount. Reads
+  // leaveCallRef.current (kept in sync every render, above) rather than
+  // closing over leaveCall directly — this effect is keyed on [fileId]
+  // only, so its cleanup would otherwise capture whatever leaveCall
+  // closure existed on the render this effect was (re)created on, which
+  // given hook-initialization order can be an early one where socket
+  // isn't set yet, and leave-voice would never actually be emitted.
   useEffect(() => {
     return () => {
-      leaveCall();
+      leaveCallRef.current();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileId]);
 
   return {

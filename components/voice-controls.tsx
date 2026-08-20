@@ -106,7 +106,12 @@ export function VoiceControls({ fileId, collaborators }: VoiceControlsProps) {
           key={socketId}
           autoPlay
           ref={(el) => {
-            if (el) el.srcObject = stream;
+            // VoiceControls re-renders often (collaborators changes on
+            // every mouse-move-driven presence update) — only reassign
+            // srcObject when it actually changed, otherwise this ref
+            // callback re-triggers the browser's media load algorithm on
+            // every render and causes audio stutter.
+            if (el && el.srcObject !== stream) el.srcObject = stream;
           }}
         />
       ))}
