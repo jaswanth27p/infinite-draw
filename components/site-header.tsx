@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
+import { CreditsBalance } from "@/components/credits-balance";
 
 export function SiteHeader() {
   return (
@@ -15,6 +16,7 @@ export function SiteHeader() {
           <SignInButton mode="modal" />
         </Show>
         <Show when="signed-in">
+          <CreditsBalance />
           <NotificationBell />
           <Link href="/files" className="text-sm">
             Files
