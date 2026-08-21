@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
@@ -17,6 +17,7 @@ import { AiDiagramPanel } from "@/components/ai-diagram-panel";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { FileEditorSkeleton } from "@/components/file-editor-skeleton";
 import { NotificationBell } from "@/components/notification-bell";
 import { CreditsBalance } from "@/components/credits-balance";
 import { buttonVariants } from "@/components/ui/button";
@@ -100,7 +101,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   }, [collaborators]);
 
   if (isLoading) {
-    return <div className="flex flex-1 items-center justify-center">Loading file…</div>;
+    return <FileEditorSkeleton />;
   }
 
   if (isError) {
@@ -114,11 +115,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
     }
     if (error instanceof ApiError && error.status === 403) {
       return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-          <h2 className="text-lg font-semibold">Setting up your account…</h2>
-          <p className="text-sm text-muted-foreground">
-            This can take a few seconds after signing up. Try refreshing shortly.
-          </p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Setting up your account…</h2>
+            <p className="text-sm text-muted-foreground">
+              This can take a few seconds after signing up. Try refreshing shortly.
+            </p>
+          </div>
         </div>
       );
     }

@@ -18,9 +18,6 @@ export function SiteHeader() {
         <Show when="signed-in">
           <CreditsBalance />
           <NotificationBell />
-          <Link href="/files" className="text-sm">
-            Files
-          </Link>
           <UserButton />
         </Show>
       </div>

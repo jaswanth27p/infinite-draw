@@ -1,8 +1,14 @@
+import { Skeleton } from "@/components/ui/skeleton";
+import { FilesPageSkeleton } from "@/components/files-page-skeleton";
+
 export default function Loading() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
-      <h1 className="text-xl font-semibold">Your files</h1>
-      <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Your files</h1>
+        <Skeleton className="h-8 w-24" />
+      </div>
+      <FilesPageSkeleton />
     </main>
   );
 }

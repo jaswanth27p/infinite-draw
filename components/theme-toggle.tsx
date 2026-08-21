@@ -2,29 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Hydration guard: theme is unknown until the client mounts, so this setState-in-effect is intentional.
+  // Hydration guard: resolvedTheme is unknown until the client mounts, so this setState-in-effect is intentional.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="h-8 w-16" aria-hidden />;
+    return <div className="size-8" aria-hidden />;
   }
 
-  const next = theme === "dark" ? "light" : "dark";
+  // Always toggle off the *resolved* (actually-applied) theme, not the raw
+  // `theme` setting — which is literally the string "system" until the user
+  // has explicitly chosen one. Toggling off "system" on a dark-OS machine
+  // would otherwise set theme="dark" while it's already rendering dark,
+  // making the button appear to do nothing.
+  const next = resolvedTheme === "dark" ? "light" : "dark";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={() => setTheme(next)}
-      className="rounded-full border border-black/[.08] px-3 py-1 text-sm dark:border-white/[.145]"
       aria-label={`Switch to ${next} mode`}
     >
-      {theme === "dark" ? "Dark" : "Light"}
-    </button>
+      {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </Button>
   );
 }

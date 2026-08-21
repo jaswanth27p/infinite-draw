@@ -1,3 +1,5 @@
+import { FileEditorSkeleton } from "@/components/file-editor-skeleton";
+
 export default function Loading() {
-  return <div className="flex flex-1 items-center justify-center">Loading editor…</div>;
+  return <FileEditorSkeleton />;
 }
