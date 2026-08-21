@@ -225,15 +225,21 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         >
           {/*
             Rendering <MainMenu> as a child fully replaces Excalidraw's
-            default hamburger menu — this is deliberately curated to drop
-            everything that points at excalidraw.com (Socials, "Find us on
-            X", their own LiveCollaborationTrigger) since this app has its
-            own collab/share system already. Library access itself lives
-            in the separate library side-panel button, not this menu.
+            default hamburger menu. Every real canvas feature is kept
+            (open, save, search, export, background, clear, help) — the
+            only two items dropped are `Socials` (their GitHub/Discord/
+            Twitter footer links) and `LiveCollaborationTrigger` (their
+            own unrelated collab-invite flow; this app already has real
+            collaboration via ShareDialog, so this would just be a second,
+            non-functional "start collaboration" button). Library access
+            lives in the separate library side-panel button, unaffected
+            either way.
           */}
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
+            <MainMenu.DefaultItems.SaveToActiveFile />
             <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.DefaultItems.SearchMenu />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
             <MainMenu.DefaultItems.ClearCanvas />
             <MainMenu.DefaultItems.Help />
