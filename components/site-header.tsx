@@ -13,7 +13,7 @@ export function SiteHeader() {
       <div className="flex items-center gap-4">
         <ThemeToggle />
         <Show when="signed-out">
-          <SignInButton mode="modal" />
+          <SignInButton mode="modal" forceRedirectUrl="/files" signUpForceRedirectUrl="/files" />
         </Show>
         <Show when="signed-in">
           <CreditsBalance />
