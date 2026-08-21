@@ -1,8 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -13,7 +16,12 @@ import { ShareDialog } from "@/components/share-dialog";
 import { AiDiagramPanel } from "@/components/ai-diagram-panel";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
+import { CreditsBalance } from "@/components/credits-balance";
+import { buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
@@ -121,26 +129,37 @@ function FileEditorContent({ fileId }: { fileId: string }) {
 
   return (
     <div className="relative flex flex-1 flex-col">
-      <div className="flex items-center justify-end gap-2 border-b p-2">
-        {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
-        {data!.role === "OWNER" && <ShareDialog fileId={fileId} />}
-        <VersionHistoryPanel
-          fileId={fileId}
-          canEdit={!isViewer}
-          onRestored={() => setRemountKey((k) => k + 1)}
-          flushAutosave={flush}
-          cancelAutosave={cancel}
-        />
-        {!isViewer && <AiDiagramPanel fileId={fileId} excalidrawApi={excalidrawApi} />}
-        <ChatPanel
-          messages={messages}
-          ownMessageIds={ownMessageIds}
-          hasMoreMessages={hasMoreMessages}
-          isLoadingOlderMessages={isLoadingOlderMessages}
-          onSend={sendChatMessage}
-          onLoadOlder={loadOlderMessages}
-        />
-        <VoiceControls fileId={fileId} collaborators={collaborators} />
+      <div className="flex items-center justify-between gap-2 border-b p-2">
+        <Link href="/files" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+          <ArrowLeft className="size-4" />
+          {data!.name}
+        </Link>
+        <div className="flex items-center gap-2">
+          {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
+          {data!.role === "OWNER" && <ShareDialog fileId={fileId} />}
+          <VersionHistoryPanel
+            fileId={fileId}
+            canEdit={!isViewer}
+            onRestored={() => setRemountKey((k) => k + 1)}
+            flushAutosave={flush}
+            cancelAutosave={cancel}
+          />
+          {!isViewer && <AiDiagramPanel fileId={fileId} excalidrawApi={excalidrawApi} />}
+          <ChatPanel
+            messages={messages}
+            ownMessageIds={ownMessageIds}
+            hasMoreMessages={hasMoreMessages}
+            isLoadingOlderMessages={isLoadingOlderMessages}
+            onSend={sendChatMessage}
+            onLoadOlder={loadOlderMessages}
+          />
+          <VoiceControls fileId={fileId} collaborators={collaborators} />
+          <div className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <ThemeToggle />
+          <CreditsBalance />
+          <NotificationBell />
+          <UserButton />
+        </div>
       </div>
       <div className="relative flex-1">
         <Excalidraw

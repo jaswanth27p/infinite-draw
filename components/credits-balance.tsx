@@ -10,8 +10,8 @@ import { AddCreditsDialog } from "@/components/add-credits-dialog";
 // that actually credits the balance can land a moment after the browser's
 // own redirect does — plain window.location.search (not Next's
 // useSearchParams) keeps this a one-off mount-time check with no Suspense
-// boundary required, since this component is mounted in the root layout
-// for every route.
+// boundary required, since this component is mounted broadly (marketing
+// layout, file editor toolbar) rather than tied to one route's query string.
 function useRefetchOnCheckoutReturn(refetchBalance: () => void) {
   const hasHandledRef = useRef(false);
 
