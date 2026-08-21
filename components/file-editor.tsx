@@ -237,7 +237,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           */}
           <MainMenu>
             <MainMenu.DefaultItems.LoadScene />
-            <MainMenu.DefaultItems.SaveToActiveFile />
+            <MainMenu.DefaultItems.Export />
             <MainMenu.DefaultItems.SaveAsImage />
             <MainMenu.DefaultItems.SearchMenu />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
