@@ -25,7 +25,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, getSceneVersion, MainMenu, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -101,6 +101,13 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   useEffect(() => {
     excalidrawApiRef.current?.updateScene({ collaborators });
   }, [collaborators]);
+
+  // Handles the #addLibrary=<url>&token=<token> redirect Excalidraw's
+  // library site sends back after "Install library" — without this hook,
+  // that hash just sits in the URL and nothing happens (must be called
+  // unconditionally, before any early return, per Rules of Hooks; it
+  // no-ops internally until excalidrawApi is non-null).
+  useHandleLibrary({ excalidrawAPI: excalidrawApi });
 
   if (isLoading) {
     return <FileEditorSkeleton />;
@@ -215,7 +222,23 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             if (isViewer) return;
             broadcastPointer({ pointer: payload.pointer, button: payload.button });
           }}
-        />
+        >
+          {/*
+            Rendering <MainMenu> as a child fully replaces Excalidraw's
+            default hamburger menu — this is deliberately curated to drop
+            everything that points at excalidraw.com (Socials, "Find us on
+            X", their own LiveCollaborationTrigger) since this app has its
+            own collab/share system already. Library access itself lives
+            in the separate library side-panel button, not this menu.
+          */}
+          <MainMenu>
+            <MainMenu.DefaultItems.LoadScene />
+            <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.DefaultItems.ChangeCanvasBackground />
+            <MainMenu.DefaultItems.ClearCanvas />
+            <MainMenu.DefaultItems.Help />
+          </MainMenu>
+        </Excalidraw>
       </div>
     </div>
   );

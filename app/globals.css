@@ -134,3 +134,14 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Excalidraw's Help dialog has no prop to omit its own header row of
+ * excalidraw.com links (docs/blog/GitHub/YouTube) — it's not part of the
+ * customizable MainMenu API, just a fixed block inside the dialog
+ * component itself (see @excalidraw/excalidraw's HelpDialog.tsx). Hiding
+ * it here leaves the actual keyboard-shortcuts content untouched.
+ */
+.HelpDialog__header {
+  display: none;
+}
