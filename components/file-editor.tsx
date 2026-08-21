@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
@@ -24,7 +25,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, getSceneVersion, THEME } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -44,6 +45,7 @@ export function FileEditor({ fileId }: { fileId: string }) {
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId);
+  const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -168,6 +170,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
       <div className="relative flex-1">
         <Excalidraw
           key={remountKey}
+          theme={resolvedTheme === "dark" ? THEME.DARK : THEME.LIGHT}
           viewModeEnabled={isViewer}
           excalidrawAPI={(api) => {
             excalidrawApiRef.current = api;
