@@ -141,7 +141,13 @@
  * customizable MainMenu API, just a fixed block inside the dialog
  * component itself (see @excalidraw/excalidraw's HelpDialog.tsx). Hiding
  * it here leaves the actual keyboard-shortcuts content untouched.
+ *
+ * Selector must be `.excalidraw .HelpDialog__header`, not the bare class:
+ * that's the exact selector Excalidraw's own stylesheet uses (specificity
+ * 0-2-0), and a bare `.HelpDialog__header` (0-1-0) loses to it regardless
+ * of import order. `!important` on top since this overrides a third-party
+ * component's internal styling, not our own.
  */
-.HelpDialog__header {
-  display: none;
+.excalidraw .HelpDialog__header {
+  display: none !important;
 }
