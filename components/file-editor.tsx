@@ -10,6 +10,7 @@ import { useCollab } from "@/hooks/use-collab";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
+import { AiDiagramPanel } from "@/components/ai-diagram-panel";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
 import { ApiError } from "@/lib/api-client";
@@ -37,6 +38,12 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const [remountKey, setRemountKey] = useState(0);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  // Mirrors excalidrawApiRef into state so components rendered from JSX
+  // (AiDiagramPanel) can receive the API instance as a prop without reading
+  // a ref during render — the ref itself stays the source of truth for the
+  // high-frequency paths above (onChange/onPointerUpdate/collab effects),
+  // which intentionally avoid re-rendering this component on every update.
+  const [excalidrawApi, setExcalidrawApi] = useState<ExcalidrawImperativeAPI | null>(null);
   // Last scene version (getSceneVersion) seen by onChange, used to skip
   // redundant work (scheduleSave + broadcastElements) when onChange fires
   // due to non-element appState changes only — e.g. the collaborators map
@@ -124,6 +131,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           flushAutosave={flush}
           cancelAutosave={cancel}
         />
+        {!isViewer && <AiDiagramPanel fileId={fileId} excalidrawApi={excalidrawApi} />}
         <ChatPanel
           messages={messages}
           ownMessageIds={ownMessageIds}
@@ -140,6 +148,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           viewModeEnabled={isViewer}
           excalidrawAPI={(api) => {
             excalidrawApiRef.current = api;
+            setExcalidrawApi(api);
           }}
           initialData={{
             elements: data!.currentData.elements as never,
