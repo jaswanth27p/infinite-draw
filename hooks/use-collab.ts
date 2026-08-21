@@ -184,7 +184,11 @@ export function useCollab(
 
     function handleChatMessage(message: ChatMessage) {
       if (cancelled) return;
-      setMessages((prev) => [message, ...prev]);
+      // Dedupe against the sender's own ack-driven insert in
+      // sendChatMessage above — the gateway excludes the sender from this
+      // broadcast, so this only matters for edge cases (e.g. a reconnect
+      // replaying state), not the common case.
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [message, ...prev]));
     }
 
     socket.on("connect", handleConnect);
@@ -283,7 +287,12 @@ export function useCollab(
 
   const sendChatMessage = useCallback(
     (body: string) => {
+      // The gateway excludes the sender from the "chat-message" broadcast
+      // now (see collab.gateway.ts) — this ack is the sender's only
+      // delivery of their own message, so it has to add it to `messages`
+      // itself, not just tag it in `ownMessageIds`.
       socket?.emit("send-chat-message", { fileId, body }, (message: ChatMessage) => {
+        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [message, ...prev]));
         setOwnMessageIds((prev) => new Set(prev).add(message.id));
       });
     },
