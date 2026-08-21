@@ -25,7 +25,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion, THEME } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -170,7 +170,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
       <div className="relative flex-1">
         <Excalidraw
           key={remountKey}
-          theme={resolvedTheme === "dark" ? THEME.DARK : THEME.LIGHT}
+          theme={resolvedTheme === "dark" ? "dark" : "light"}
           viewModeEnabled={isViewer}
           excalidrawAPI={(api) => {
             excalidrawApiRef.current = api;
