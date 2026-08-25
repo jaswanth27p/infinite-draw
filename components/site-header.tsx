@@ -7,7 +7,7 @@ import { CreditsBalance } from "@/components/credits-balance";
 export function SiteHeader() {
   return (
     <header className="flex items-center justify-between border-b border-black/[.08] px-6 py-3 dark:border-white/[.145]">
-      <Link href="/" className="font-semibold">
+      <Link href="/" className="font-semibold tracking-tight">
         infinite-draw
       </Link>
       <div className="flex items-center gap-4">
