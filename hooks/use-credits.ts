@@ -8,7 +8,10 @@ interface BalanceResponse {
 }
 
 interface CheckoutResponse {
-  url: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
 }
 
 export function useCredits() {
