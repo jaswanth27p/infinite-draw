@@ -15,7 +15,7 @@ export default function FileNotFound() {
           It may have been deleted, or you don&apos;t have access to it.
         </p>
       </div>
-      <Link href="/files" className={cn(buttonVariants())}>
+      <Link href="/home" className={cn(buttonVariants())}>
         Back to your files
       </Link>
     </div>

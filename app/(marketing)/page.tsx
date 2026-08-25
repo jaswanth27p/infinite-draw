@@ -31,7 +31,7 @@ const FEATURES = [
 export default async function Home() {
   const { userId } = await auth();
   if (userId) {
-    redirect("/files");
+    redirect("/home");
   }
 
   return (
@@ -45,7 +45,7 @@ export default async function Home() {
           Draw together, chat per file, talk over voice, and turn a prompt into a diagram with
           AI — all in one canvas.
         </p>
-        <SignInButton mode="modal" forceRedirectUrl="/files" signUpForceRedirectUrl="/files">
+        <SignInButton mode="modal" forceRedirectUrl="/home" signUpForceRedirectUrl="/home">
           <Button size="lg" className="mt-2">
             Get started
           </Button>

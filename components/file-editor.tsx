@@ -143,7 +143,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   return (
     <div className="relative flex flex-1 flex-col">
       <div className="flex items-center justify-between gap-2 border-b p-2">
-        <Link href="/files" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+        <Link href="/home" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           <ArrowLeft className="size-4" />
           {data!.name}
         </Link>
