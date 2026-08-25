@@ -1,17 +1,10 @@
 import { Suspense } from "react";
 import { FileText } from "lucide-react";
 import { apiFetchServer } from "@/lib/api-server";
-import { FileCard } from "@/components/file-card";
 import { EmptyState } from "@/components/empty-state";
 import { FileGridSkeleton } from "@/components/file-grid-skeleton";
-
-interface FileListItem {
-  id: string;
-  name: string;
-  thumbnailUrl: string | null;
-  updatedAt: string;
-  starred: boolean;
-}
+import { FileBrowser } from "@/components/file-browser";
+import type { FileListItem } from "@/lib/file-types";
 
 async function FileGrid() {
   const { owned }: { owned: FileListItem[] } = await apiFetchServer("/files");
@@ -26,13 +19,7 @@ async function FileGrid() {
     );
   }
 
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-      {owned.map((file) => (
-        <FileCard key={file.id} file={file} />
-      ))}
-    </div>
-  );
+  return <FileBrowser files={owned} />;
 }
 
 export default function HomePage() {
