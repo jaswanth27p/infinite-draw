@@ -26,7 +26,7 @@ export function useAiDiagram(fileId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, requestId: crypto.randomUUID() }),
       })) as MermaidResponse;
-      return toElements(mermaid);
+      return mermaid;
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["credits", "balance"] }),
   });
@@ -50,7 +50,7 @@ export function useAiDiagram(fileId: string) {
   });
 
   return {
-    generateDiagram: (prompt: string) => generate.mutateAsync(prompt),
+    generateMermaid: (prompt: string) => generate.mutateAsync(prompt),
     modifyDiagram: (prompt: string, selectedElements: readonly ExcalidrawElement[]) =>
       modify.mutateAsync({ prompt, selectedElements }),
     isGenerating: generate.isPending,
