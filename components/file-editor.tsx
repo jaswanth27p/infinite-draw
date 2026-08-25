@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
@@ -14,7 +14,8 @@ import { useCollab } from "@/hooks/use-collab";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
-import { AiDiagramPanel } from "@/components/ai-diagram-panel";
+import { ModifySelectionDialog } from "@/components/modify-selection-dialog";
+import { useAiDiagram } from "@/hooks/use-ai-diagram";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,7 +26,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion, MainMenu, useHandleLibrary } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, getSceneVersion, MainMenu, TTDDialog, TTDDialogTrigger, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -48,6 +49,8 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
+  const { generateMermaid } = useAiDiagram(fileId);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   // Mirrors excalidrawApiRef into state so components rendered from JSX
@@ -110,6 +113,18 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   // no-ops internally until excalidrawApi is non-null).
   useHandleLibrary({ excalidrawAPI: excalidrawApi });
 
+  async function handleTtdTextSubmit(prompt: string) {
+    try {
+      const mermaid = await generateMermaid(prompt);
+      return { generatedResponse: mermaid };
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        return { error: new Error("Not enough credits — top up from the credits balance in the sidebar.") };
+      }
+      return { error: err instanceof Error ? err : new Error("Generation failed — try again.") };
+    }
+  }
+
   if (isLoading) {
     return <FileEditorSkeleton />;
   }
@@ -165,7 +180,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             flushAutosave={flush}
             cancelAutosave={cancel}
           />
-          {!isViewer && <AiDiagramPanel fileId={fileId} excalidrawApi={excalidrawApi} />}
+          {!isViewer && (
+            <ModifySelectionDialog
+              fileId={fileId}
+              excalidrawApi={excalidrawApi}
+              open={modifyDialogOpen}
+              onOpenChange={setModifyDialogOpen}
+            />
+          )}
           <ChatPanel
             messages={messages}
             ownMessageIds={ownMessageIds}
@@ -250,8 +272,19 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             <MainMenu.DefaultItems.SearchMenu />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
             <MainMenu.DefaultItems.ClearCanvas />
+            {!isViewer && (
+              <MainMenu.Item onSelect={() => setModifyDialogOpen(true)} icon={<Sparkles className="size-4" />}>
+                Modify selection with AI
+              </MainMenu.Item>
+            )}
             <MainMenu.DefaultItems.Help />
           </MainMenu>
+          {!isViewer && (
+            <>
+              <TTDDialogTrigger />
+              <TTDDialog onTextSubmit={handleTtdTextSubmit} />
+            </>
+          )}
         </Excalidraw>
       </div>
     </div>
