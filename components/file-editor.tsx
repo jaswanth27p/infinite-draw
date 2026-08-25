@@ -21,7 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { FileEditorSkeleton } from "@/components/file-editor-skeleton";
 import { NotificationBell } from "@/components/notification-bell";
 import { CreditsBalance } from "@/components/credits-balance";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
@@ -47,6 +47,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   // Mirrors excalidrawApiRef into state so components rendered from JSX
@@ -149,7 +150,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         </Link>
         <div className="flex items-center gap-2">
           {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
-          {data!.role === "OWNER" && <ShareDialog fileId={fileId} />}
+          {data!.role === "OWNER" && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
+                Share
+              </Button>
+              <ShareDialog fileId={fileId} open={shareDialogOpen} onOpenChange={setShareDialogOpen} />
+            </>
+          )}
           <VersionHistoryPanel
             fileId={fileId}
             canEdit={!isViewer}

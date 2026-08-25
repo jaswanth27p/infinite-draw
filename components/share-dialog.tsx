@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +9,13 @@ import { useFileShares } from "@/hooks/use-file-shares";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { ApiError } from "@/lib/api-client";
 
-export function ShareDialog({ fileId }: { fileId: string }) {
+interface ShareDialogProps {
+  fileId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
   const { data: file } = useFileQuery(fileId);
   const { sharesQuery, invite, updateRole, remove, updateGeneralAccess } = useFileShares(fileId);
   const [email, setEmail] = useState("");
@@ -44,8 +50,7 @@ export function ShareDialog({ fileId }: { fileId: string }) {
   }
 
   return (
-    <Dialog>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>Share</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Share this file</DialogTitle>
