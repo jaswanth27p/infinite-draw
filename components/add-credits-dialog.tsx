@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCredits } from "@/hooks/use-credits";
+import { loadRazorpayScript } from "@/lib/load-razorpay-script";
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000];
 const MIN_AMOUNT = 100;
@@ -22,16 +23,41 @@ export function AddCreditsDialog({
   balance: number;
   trigger: React.ReactNode;
 }) {
-  const { startCheckout, isStartingCheckout } = useCredits();
+  const { startCheckout, isStartingCheckout, refetchBalance } = useCredits();
   const [customAmount, setCustomAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  function pollBalanceAfterPayment() {
+    // The Razorpay webhook is what actually credits the balance — this
+    // just re-polls it a few times so the UI reflects the new balance
+    // shortly after the modal closes, without waiting for the user to
+    // manually refresh. Same 5-attempts/2000ms pattern
+    // credits-balance.tsx's now-removed useRefetchOnCheckoutReturn used
+    // for the old Stripe-redirect flow, just triggered by the modal's
+    // handler callback instead of a returning-from-redirect URL param.
+    let attempts = 0;
+    const interval = setInterval(() => {
+      refetchBalance();
+      attempts += 1;
+      if (attempts >= 5) clearInterval(interval);
+    }, 2000);
+  }
 
   async function handlePay(amountRupees: number) {
     setError(null);
     try {
-      const { url } = await startCheckout(amountRupees);
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.href = url;
+      const { orderId, amount, currency, keyId } = await startCheckout(amountRupees);
+      await loadRazorpayScript();
+      const razorpay = new window.Razorpay({
+        key: keyId,
+        order_id: orderId,
+        amount,
+        currency,
+        name: "infinite-draw",
+        description: "Credits top-up",
+        handler: () => pollBalanceAfterPayment(),
+      });
+      razorpay.open();
     } catch {
       setError("Something went wrong starting checkout — try again.");
     }
