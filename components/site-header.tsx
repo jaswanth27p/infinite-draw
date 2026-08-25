@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
 import { CreditsBalance } from "@/components/credits-balance";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   return (
@@ -13,7 +15,9 @@ export function SiteHeader() {
       <div className="flex items-center gap-4">
         <ThemeToggle />
         <Show when="signed-out">
-          <SignInButton mode="modal" forceRedirectUrl="/home" signUpForceRedirectUrl="/home" />
+          <Link href="/sign-in" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            Sign in
+          </Link>
         </Show>
         <Show when="signed-in">
           <CreditsBalance />

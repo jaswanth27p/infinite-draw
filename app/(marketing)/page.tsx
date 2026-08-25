@@ -1,9 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { SignInButton } from "@clerk/nextjs";
+import Link from "next/link";
 import { PenTool, MessagesSquare, Mic, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const FEATURES = [
   {
@@ -45,11 +46,9 @@ export default async function Home() {
           Draw together, chat per file, talk over voice, and turn a prompt into a diagram with
           AI — all in one canvas.
         </p>
-        <SignInButton mode="modal" forceRedirectUrl="/home" signUpForceRedirectUrl="/home">
-          <Button size="lg" className="mt-2">
-            Get started
-          </Button>
-        </SignInButton>
+        <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }), "mt-2")}>
+          Get started
+        </Link>
       </div>
 
       <div className="grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
