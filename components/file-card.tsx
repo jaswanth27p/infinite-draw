@@ -15,7 +15,7 @@ interface FileCardProps {
 export function FileCard({ file }: FileCardProps) {
   return (
     <Link href={`/files/${file.id}`}>
-      <Card>
+      <Card interactive>
         <CardHeader>
           <CardTitle className="truncate text-sm">{file.name}</CardTitle>
           {file.owner && (
