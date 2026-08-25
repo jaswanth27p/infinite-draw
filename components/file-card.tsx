@@ -1,29 +1,60 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StarButton } from "@/components/star-button";
+import { FileOptionsMenu } from "@/components/file-options-menu";
+import type { FileListItem, SharedFileListItem } from "@/lib/file-types";
 
 interface FileCardProps {
-  file: {
-    id: string;
-    name: string;
-    thumbnailUrl: string | null;
-    updatedAt: string;
-    role?: "OWNER" | "EDITOR" | "VIEWER";
-    owner?: { name: string | null; email: string };
-    starred: boolean;
-  };
+  file: FileListItem | SharedFileListItem;
+  view?: "grid" | "list";
 }
 
-export function FileCard({ file }: FileCardProps) {
+function fileRole(file: FileListItem | SharedFileListItem): "OWNER" | "EDITOR" | "VIEWER" {
+  return "role" in file ? file.role : "OWNER";
+}
+
+export function FileCard({ file, view = "grid" }: FileCardProps) {
+  const role = fileRole(file);
+  const owner = "owner" in file ? file.owner : undefined;
+
+  if (view === "list") {
+    return (
+      <div className="relative">
+        <Link href={`/files/${file.id}`}>
+          <Card interactive className="flex-row items-center gap-3 px-3 py-2">
+            {file.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
+              <img src={file.thumbnailUrl} alt="" className="size-10 shrink-0 rounded object-cover" />
+            ) : (
+              <div className="size-10 shrink-0 rounded bg-muted" />
+            )}
+            <div className="min-w-0 flex-1 pr-16">
+              <p className="truncate text-sm">{file.name}</p>
+              {owner && (
+                <p className="truncate text-xs text-muted-foreground">
+                  Shared by {owner.name ?? owner.email} · {role === "EDITOR" ? "Editor" : "Viewer"}
+                </p>
+              )}
+            </div>
+          </Card>
+        </Link>
+        <div className="absolute top-1/2 right-2 z-10 flex -translate-y-1/2 items-center gap-1">
+          <StarButton fileId={file.id} starred={file.starred} />
+          <FileOptionsMenu fileId={file.id} fileName={file.name} starred={file.starred} role={role} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <Link href={`/files/${file.id}`}>
         <Card interactive>
           <CardHeader>
             <CardTitle className="truncate text-sm">{file.name}</CardTitle>
-            {file.owner && (
+            {owner && (
               <p className="truncate text-xs text-muted-foreground">
-                Shared by {file.owner.name ?? file.owner.email} · {file.role === "EDITOR" ? "Editor" : "Viewer"}
+                Shared by {owner.name ?? owner.email} · {role === "EDITOR" ? "Editor" : "Viewer"}
               </p>
             )}
           </CardHeader>
@@ -41,11 +72,10 @@ export function FileCard({ file }: FileCardProps) {
           </CardContent>
         </Card>
       </Link>
-      <StarButton
-        fileId={file.id}
-        starred={file.starred}
-        className="absolute top-2 right-2 z-10"
-      />
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        <StarButton fileId={file.id} starred={file.starred} />
+        <FileOptionsMenu fileId={file.id} fileName={file.name} starred={file.starred} role={role} />
+      </div>
     </div>
   );
 }

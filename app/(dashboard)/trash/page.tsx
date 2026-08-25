@@ -4,13 +4,7 @@ import { apiFetchServer } from "@/lib/api-server";
 import { TrashFileCard } from "@/components/trash-file-card";
 import { EmptyState } from "@/components/empty-state";
 import { FileGridSkeleton } from "@/components/file-grid-skeleton";
-
-interface TrashedFileListItem {
-  id: string;
-  name: string;
-  thumbnailUrl: string | null;
-  deletedAt: string;
-}
+import type { TrashedFileListItem } from "@/lib/file-types";
 
 async function FileGrid() {
   const files: TrashedFileListItem[] = await apiFetchServer("/files/trash");
