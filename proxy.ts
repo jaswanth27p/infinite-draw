@@ -10,7 +10,7 @@ export default clerkMiddleware(async (auth, req) => {
   if (req.nextUrl.pathname === '/') {
     return NextResponse.redirect(new URL('/home', req.url));
   }
-});
+}, { signInUrl: '/sign-in', signUpUrl: '/sign-up' });
 
 export const config = {
   matcher: [
