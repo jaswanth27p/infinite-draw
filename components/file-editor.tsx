@@ -184,6 +184,8 @@ function FileEditorContent({ fileId }: { fileId: string }) {
               cancel();
               cancelThumbnail();
             }}
+            excalidrawApi={excalidrawApi}
+            resolvedTheme={resolvedTheme}
           />
           {!isViewer && (
             <ModifySelectionDialog

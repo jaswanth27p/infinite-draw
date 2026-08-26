@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -12,10 +11,11 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { exportToBlob } from "@excalidraw/excalidraw";
 import { useFileVersions } from "@/hooks/use-file-versions";
-import { useFileQuery, type FileRecord } from "@/hooks/use-file-query";
+import { useFileQuery } from "@/hooks/use-file-query";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
+import { exportCurrentThumbnail } from "@/lib/export-thumbnail";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 interface VersionHistoryPanelProps {
   fileId: string;
@@ -40,6 +40,17 @@ interface VersionHistoryPanelProps {
    * before the restore) can't fire afterward and clobber the
    * just-restored currentData. */
   cancelAutosave: () => void;
+  /** The live Excalidraw instance, used to export "Save version"'s
+   * thumbnail from what's actually on screen (live appState/theme)
+   * instead of the persisted `File.currentData.appState` snapshot,
+   * which can be stale — see lib/export-thumbnail.ts. */
+  excalidrawApi: ExcalidrawImperativeAPI | null;
+  /** The app's current resolved theme (next-themes), forced into the
+   * exported thumbnail's background the same way it's forced into the
+   * live `<Excalidraw theme={...}>` prop — Excalidraw's own internal
+   * appState.theme doesn't always stay in sync with an externally
+   * injected theme prop. */
+  resolvedTheme: string | undefined;
 }
 
 export function VersionHistoryPanel({
@@ -48,11 +59,12 @@ export function VersionHistoryPanel({
   onRestored,
   flushAutosave,
   cancelAutosave,
+  excalidrawApi,
+  resolvedTheme,
 }: VersionHistoryPanelProps) {
   const { versionsQuery, saveVersion, restoreVersion } = useFileVersions(fileId);
   const { data: file } = useFileQuery(fileId);
   const uploadThumbnail = useThumbnailUpload(fileId);
-  const queryClient = useQueryClient();
   const [versionName, setVersionName] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // Covers the whole export -> upload -> save sequence, not just the
@@ -67,26 +79,13 @@ export function VersionHistoryPanel({
   }
 
   async function handleSave() {
-    if (!versionName.trim() || !file || isSaving) return;
+    if (!versionName.trim() || !file || isSaving || !excalidrawApi) return;
 
     setIsSaving(true);
     setSaveError(null);
     try {
-      // Flush any pending debounced autosave first so both the exported
-      // thumbnail and the version snapshot the backend takes of
-      // File.currentData reflect the latest edits, not whatever was still
-      // sitting in the debounce buffer. Read the file back from the cache
-      // afterward rather than the `file` closed over above — that snapshot
-      // predates the flush and setQueryData's cache update doesn't
-      // retroactively update an already-captured render's variables.
       await flushAutosave();
-      const latestFile = queryClient.getQueryData<FileRecord>(["file", fileId]) ?? file;
-
-      const blob = await exportToBlob({
-        elements: latestFile.currentData.elements as never,
-        appState: { ...latestFile.currentData.appState, exportBackground: true } as never,
-        files: null,
-      });
+      const blob = await exportCurrentThumbnail(excalidrawApi, resolvedTheme);
       const thumbnailUrl = await uploadThumbnail(blob);
       await saveVersion.mutateAsync({ name: versionName.trim(), thumbnailUrl });
 
