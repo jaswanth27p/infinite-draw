@@ -19,8 +19,8 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
 
   if (view === "list") {
     return (
-      <div className="relative">
-        <Link href={`/files/${file.id}`}>
+      <div className="flex items-center gap-1">
+        <Link href={`/files/${file.id}`} className="min-w-0 flex-1">
           <Card interactive className="flex-row items-center gap-3 px-3 py-2">
             {file.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
@@ -28,7 +28,7 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
             ) : (
               <div className="size-10 shrink-0 rounded bg-muted" />
             )}
-            <div className="min-w-0 flex-1 pr-16">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm">{file.name}</p>
               {owner && (
                 <p className="truncate text-xs text-muted-foreground">
@@ -38,7 +38,7 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
             </div>
           </Card>
         </Link>
-        <div className="absolute top-1/2 right-2 z-10 flex -translate-y-1/2 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <StarButton fileId={file.id} starred={file.starred} />
           <FileOptionsMenu fileId={file.id} fileName={file.name} starred={file.starred} role={role} />
         </div>
