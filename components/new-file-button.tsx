@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApiClient } from "@/lib/api-client";
 
@@ -21,7 +22,8 @@ export function NewFileButton() {
   }
 
   return (
-    <Button onClick={handleClick} disabled={pending}>
+    <Button onClick={handleClick} disabled={pending} className="w-full">
+      <Plus className="size-4" />
       {pending ? "Creating…" : "New file"}
     </Button>
   );
