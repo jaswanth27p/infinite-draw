@@ -2,9 +2,12 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import { io } from "socket.io-client";
 import { useApiClient } from "@/lib/api-client";
+import type { PaginatedResponse } from "@/lib/file-types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 
@@ -28,6 +31,7 @@ export function useNotifications() {
   const { getToken } = useAuth();
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const getTokenRef = useRef(getToken);
   // eslint-disable-next-line react-hooks/refs
   getTokenRef.current = getToken;
@@ -95,11 +99,45 @@ export function useNotifications() {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     });
 
+    // A live thumbnail update patches the cached file-list pages directly
+    // (rather than invalidating) so already-loaded lists update in place
+    // without a refetch or pagination reset. /home is an RSC page whose
+    // preview sections aren't backed by this client cache, so it's
+    // refreshed separately, and only when the user is actually there.
+    socket.on(
+      "thumbnail-updated",
+      ({ fileId, thumbnailUrl }: { fileId: string; thumbnailUrl: string }) => {
+        if (cancelled) return;
+        queryClient.setQueriesData(
+          { queryKey: ["file-list"] },
+          (
+            old:
+              | InfiniteData<PaginatedResponse<{ id: string; thumbnailUrl: string | null }>>
+              | undefined,
+          ) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                items: page.items.map((item) =>
+                  item.id === fileId ? { ...item, thumbnailUrl } : item,
+                ),
+              })),
+            };
+          },
+        );
+        if (window.location.pathname === "/home") {
+          router.refresh();
+        }
+      },
+    );
+
     return () => {
       cancelled = true;
       socket.disconnect();
     };
-  }, [queryClient]);
+  }, [queryClient, router]);
 
   return {
     notifications: notificationsQuery.data?.items ?? [],
