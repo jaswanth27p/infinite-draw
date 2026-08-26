@@ -4,13 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Home, Users, Star, Trash2, Settings, Menu } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NewFileButton } from "@/components/new-file-button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { NotificationBell } from "@/components/notification-bell";
-import { CreditsBalance } from "@/components/credits-balance";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -52,12 +48,6 @@ function SidebarContent() {
       </nav>
       <div className="mt-auto flex flex-col gap-1 border-t border-border pt-4">
         <NavLink href="/settings" label="Settings" icon={Settings} active={pathname === "/settings"} />
-        <div className="flex items-center gap-1 px-2 pt-2">
-          <ThemeToggle />
-          <NotificationBell />
-          <CreditsBalance />
-          <UserButton />
-        </div>
       </div>
     </div>
   );
