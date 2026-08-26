@@ -22,11 +22,14 @@ export function useThumbnailUpload(fileId: string) {
         body: JSON.stringify({ fileId }),
       });
 
-      await fetch(uploadUrl, {
+      const res = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": "image/png" },
         body: blob,
       });
+      if (!res.ok) {
+        throw new Error(`Thumbnail upload failed: ${res.status}`);
+      }
 
       return publicUrl as string;
     },

@@ -16,13 +16,19 @@ export function useThumbnailAutosave(fileId: string) {
   const schedule = useCallback(
     (api: ExcalidrawImperativeAPI, resolvedTheme: string | undefined) => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(async () => {
-        const blob = await exportCurrentThumbnail(api, resolvedTheme);
-        const thumbnailUrl = await uploadThumbnail(blob);
-        await apiClient(`/files/${fileId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ thumbnailUrl }),
+      timerRef.current = setTimeout(() => {
+        void (async () => {
+          const blob = await exportCurrentThumbnail(api, resolvedTheme);
+          const thumbnailUrl = await uploadThumbnail(blob);
+          await apiClient(`/files/${fileId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ thumbnailUrl }),
+          });
+        })().catch(() => {
+          // Best-effort: a failed background thumbnail regen must never
+          // interrupt an in-progress edit. The next debounce tick (the
+          // user's next edit) tries again.
         });
       }, THUMBNAIL_DEBOUNCE_MS);
     },
@@ -31,6 +37,7 @@ export function useThumbnailAutosave(fileId: string) {
 
   const cancel = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
   }, []);
 
   return { schedule, cancel };

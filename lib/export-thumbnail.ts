@@ -14,6 +14,7 @@ export async function exportCurrentThumbnail(
       theme: resolvedTheme === "dark" ? "dark" : "light",
       exportBackground: true,
     },
-    files: null,
+    files: api.getFiles(),
+    maxWidthOrHeight: 512,
   });
 }
