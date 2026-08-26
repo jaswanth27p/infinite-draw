@@ -16,6 +16,7 @@ export default function RecentPage() {
         emptyIcon={FileText}
         emptyTitle="No files yet"
         emptyDescription="Create a file to start drawing, alone or with others."
+        errorMessage="Couldn't load recent files"
         renderCard={(file, view) => <FileCard file={file} view={view} />}
       />
     </main>

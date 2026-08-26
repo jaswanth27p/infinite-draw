@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { UseInfiniteQueryResult, InfiniteData } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
@@ -8,16 +8,16 @@ import { useViewMode } from "@/hooks/use-view-mode";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { EmptyState } from "@/components/empty-state";
 import { FileGridSkeleton } from "@/components/file-grid-skeleton";
+import { FileGridError } from "@/components/file-grid-error";
 import type { PaginatedResponse } from "@/lib/file-types";
 
 const GRID_ROW_HEIGHT = 220;
 const LIST_ROW_HEIGHT = 64;
 
-function useColumnCount(ref: React.RefObject<HTMLDivElement | null>) {
+function useColumnCount(el: HTMLDivElement | null) {
   const [columns, setColumns] = useState(2);
 
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
       const width = entry.contentRect.width;
@@ -25,7 +25,7 @@ function useColumnCount(ref: React.RefObject<HTMLDivElement | null>) {
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [ref]);
+  }, [el]);
 
   return columns;
 }
@@ -35,6 +35,7 @@ interface VirtualizedFileListProps<T extends { id: string }> {
   emptyIcon: LucideIcon;
   emptyTitle: string;
   emptyDescription: string;
+  errorMessage: string;
   renderCard: (item: T, view: "grid" | "list") => React.ReactNode;
   showViewToggle?: boolean;
 }
@@ -44,14 +45,15 @@ export function VirtualizedFileList<T extends { id: string }>({
   emptyIcon,
   emptyTitle,
   emptyDescription,
+  errorMessage,
   renderCard,
   showViewToggle = true,
 }: VirtualizedFileListProps<T>) {
   const [storedView, setView] = useViewMode();
   const view = showViewToggle ? storedView : "grid";
-  const parentRef = useRef<HTMLDivElement>(null);
-  const columns = useColumnCount(parentRef);
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } = query;
+  const [parentEl, setParentEl] = useState<HTMLDivElement | null>(null);
+  const columns = useColumnCount(parentEl);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, isError, error, refetch } = query;
 
   const items = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
   const effectiveColumns = view === "grid" ? columns : 1;
@@ -59,7 +61,7 @@ export function VirtualizedFileList<T extends { id: string }>({
 
   const virtualizer = useVirtualizer({
     count: rowCount,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => parentEl,
     estimateSize: () => (view === "grid" ? GRID_ROW_HEIGHT : LIST_ROW_HEIGHT),
     overscan: 5,
   });
@@ -78,6 +80,10 @@ export function VirtualizedFileList<T extends { id: string }>({
     return <FileGridSkeleton />;
   }
 
+  if (isError) {
+    return <FileGridError error={error} reset={() => refetch()} message={errorMessage} />;
+  }
+
   if (items.length === 0) {
     return <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyDescription} />;
   }
@@ -89,7 +95,7 @@ export function VirtualizedFileList<T extends { id: string }>({
           <ViewModeToggle view={storedView} onChange={setView} />
         </div>
       )}
-      <div ref={parentRef} className="h-[calc(100vh-14rem)] overflow-y-auto">
+      <div ref={setParentEl} className="h-[calc(100vh-14rem)] overflow-y-auto">
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {virtualItems.map((virtualRow) => {
             const rowItems = items.slice(
@@ -106,10 +112,11 @@ export function VirtualizedFileList<T extends { id: string }>({
                   width: "100%",
                   height: virtualRow.size,
                   transform: `translateY(${virtualRow.start}px)`,
+                  ...(view === "grid"
+                    ? { display: "grid", gap: "1rem", gridTemplateColumns: `repeat(${effectiveColumns}, minmax(0, 1fr))` }
+                    : {}),
                 }}
-                className={
-                  view === "grid" ? "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" : "flex flex-col gap-2"
-                }
+                className={view === "list" ? "flex flex-col gap-2" : undefined}
               >
                 {rowItems.length > 0
                   ? rowItems.map((item) => <div key={item.id}>{renderCard(item, view)}</div>)

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Download, MoreVertical, Pencil, Share2, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ interface FileOptionsMenuProps {
 export function FileOptionsMenu({ fileId, fileName, starred, role, className }: FileOptionsMenuProps) {
   const apiClient = useApiClient();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [shareOpen, setShareOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const isOwner = role === "OWNER";
@@ -38,6 +40,7 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
       console.error("Failed to toggle star", err);
       return;
     }
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     router.refresh();
   }
 
@@ -72,6 +75,7 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
       console.error("Failed to move file to trash", err);
       return;
     }
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     router.refresh();
   }
 

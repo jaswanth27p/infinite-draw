@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ interface RenameFileDialogProps {
 export function RenameFileDialog({ fileId, currentName, open, onOpenChange }: RenameFileDialogProps) {
   const apiClient = useApiClient();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(currentName);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function RenameFileDialog({ fileId, currentName, open, onOpenChange }: Re
     }
     setIsPending(false);
     onOpenChange(false);
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     router.refresh();
   }
 

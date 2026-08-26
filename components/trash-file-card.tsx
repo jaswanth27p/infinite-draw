@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ interface TrashFileCardProps {
 export function TrashFileCard({ file }: TrashFileCardProps) {
   const apiClient = useApiClient();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   // Covers the in-flight request itself — useTransition's isPending only
@@ -44,6 +46,7 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
       return;
     }
     setIsSubmitting(false);
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     startTransition(() => router.refresh());
   }
 
@@ -59,6 +62,7 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
     }
     setIsSubmitting(false);
     setDialogOpen(false);
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     startTransition(() => router.refresh());
   }
 

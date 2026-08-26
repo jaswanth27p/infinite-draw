@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApiClient } from "@/lib/api-client";
@@ -16,6 +17,7 @@ interface StarButtonProps {
 export function StarButton({ fileId, starred, className }: StarButtonProps) {
   const apiClient = useApiClient();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [optimisticStarred, setOptimisticStarred] = useState(starred);
   const [isPending, startTransition] = useTransition();
 
@@ -30,6 +32,7 @@ export function StarButton({ fileId, starred, className }: StarButtonProps) {
       setOptimisticStarred(!next);
       return;
     }
+    queryClient.invalidateQueries({ queryKey: ["file-list"] });
     startTransition(() => router.refresh());
   }
 

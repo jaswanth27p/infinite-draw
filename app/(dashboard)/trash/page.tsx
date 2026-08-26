@@ -16,6 +16,7 @@ export default function TrashPage() {
         emptyIcon={Trash2}
         emptyTitle="Trash is empty"
         emptyDescription="Deleted files show up here for you to restore or remove for good."
+        errorMessage="Couldn't load trash"
         renderCard={(file) => <TrashFileCard file={file} />}
         showViewToggle={false}
       />

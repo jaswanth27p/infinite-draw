@@ -16,6 +16,7 @@ export default function SharedPage() {
         emptyIcon={Users}
         emptyTitle="Nothing shared with you yet"
         emptyDescription="Files other people share with you will show up here."
+        errorMessage="Couldn't load shared files"
         renderCard={(file, view) => <FileCard file={file} view={view} />}
       />
     </main>

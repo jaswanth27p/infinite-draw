@@ -16,6 +16,7 @@ export default function StarredPage() {
         emptyIcon={Star}
         emptyTitle="No starred files"
         emptyDescription="Files you star will show up here."
+        errorMessage="Couldn't load starred files"
         renderCard={(file, view) => <FileCard file={file} view={view} />}
       />
     </main>
