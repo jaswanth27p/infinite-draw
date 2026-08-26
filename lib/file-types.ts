@@ -17,3 +17,8 @@ export interface TrashedFileListItem {
   thumbnailUrl: string | null;
   deletedAt: string;
 }
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  nextCursor: string | null;
+}
