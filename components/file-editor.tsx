@@ -10,6 +10,7 @@ import { UserButton } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useThumbnailAutosave } from "@/hooks/use-thumbnail-autosave";
 import { useCollab } from "@/hooks/use-collab";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
@@ -46,6 +47,7 @@ export function FileEditor({ fileId }: { fileId: string }) {
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId);
+  const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -178,7 +180,10 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             canEdit={!isViewer}
             onRestored={() => setRemountKey((k) => k + 1)}
             flushAutosave={flush}
-            cancelAutosave={cancel}
+            cancelAutosave={() => {
+              cancel();
+              cancelThumbnail();
+            }}
           />
           {!isViewer && (
             <ModifySelectionDialog
@@ -247,6 +252,9 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             broadcastElements(elements);
             if (isViewer) return;
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);
+            if (excalidrawApiRef.current) {
+              scheduleThumbnail(excalidrawApiRef.current, resolvedTheme);
+            }
           }}
           onPointerUpdate={(payload) => {
             if (isViewer) return;
