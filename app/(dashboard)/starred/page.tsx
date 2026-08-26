@@ -1,34 +1,23 @@
-import { Suspense } from "react";
+"use client";
+
 import { Star } from "lucide-react";
-import { apiFetchServer } from "@/lib/api-server";
-import { EmptyState } from "@/components/empty-state";
-import { FileGridSkeleton } from "@/components/file-grid-skeleton";
-import { FileBrowser } from "@/components/file-browser";
-import type { FileListItem } from "@/lib/file-types";
-
-async function FileGrid() {
-  const files: FileListItem[] = await apiFetchServer("/files/starred");
-
-  if (files.length === 0) {
-    return (
-      <EmptyState
-        icon={Star}
-        title="No starred files"
-        description="Files you star will show up here."
-      />
-    );
-  }
-
-  return <FileBrowser files={files} />;
-}
+import { VirtualizedFileList } from "@/components/virtualized-file-list";
+import { FileCard } from "@/components/file-card";
+import { useStarredFiles } from "@/hooks/use-starred-files";
 
 export default function StarredPage() {
+  const query = useStarredFiles();
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
       <h1 className="text-2xl font-semibold tracking-tight">Starred</h1>
-      <Suspense fallback={<FileGridSkeleton />}>
-        <FileGrid />
-      </Suspense>
+      <VirtualizedFileList
+        query={query}
+        emptyIcon={Star}
+        emptyTitle="No starred files"
+        emptyDescription="Files you star will show up here."
+        renderCard={(file, view) => <FileCard file={file} view={view} />}
+      />
     </main>
   );
 }
