@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
@@ -16,6 +16,7 @@ import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
 import { ModifySelectionDialog } from "@/components/modify-selection-dialog";
+import { AiDialogTrigger } from "@/components/ai-dialog-trigger";
 import { useAiDiagram } from "@/hooks/use-ai-diagram";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
@@ -27,7 +28,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion, MainMenu, TTDDialog, TTDDialogTrigger, useHandleLibrary } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, getSceneVersion, MainMenu, TTDDialog, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -124,6 +125,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   // re-run a full-scene JSON.stringify and version scan at ~30Hz per peer
   // and keep resetting useAutosave's debounce timer.
   const lastSceneVersionRef = useRef<number | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const handleRemoteSceneUpdate = useCallback((elements: readonly ExcalidrawElement[]) => {
     setLiveElements(elements);
@@ -271,7 +273,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           <UserButton />
         </div>
       </div>
-      <div className="relative flex-1">
+      <div ref={canvasWrapperRef} className="relative flex-1">
         <Excalidraw
           key={remountKey}
           theme={resolvedTheme === "dark" ? "dark" : "light"}
@@ -342,20 +344,21 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             <MainMenu.DefaultItems.SearchMenu />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
             <MainMenu.DefaultItems.ClearCanvas />
-            {canEdit && (
-              <MainMenu.Item onSelect={() => setModifyDialogOpen(true)} icon={<Sparkles className="size-4" />}>
-                Modify selection with AI
-              </MainMenu.Item>
-            )}
             <MainMenu.DefaultItems.Help />
           </MainMenu>
-          {canEdit && (
-            <>
-              <TTDDialogTrigger />
-              <TTDDialog onTextSubmit={handleTtdTextSubmit} />
-            </>
-          )}
+          {canEdit && <TTDDialog onTextSubmit={handleTtdTextSubmit} />}
         </Excalidraw>
+        {canEdit && (
+          <AiDialogTrigger
+            containerRef={canvasWrapperRef}
+            onGenerateDiagram={() => {
+              excalidrawApiRef.current?.updateScene({
+                appState: { openDialog: { name: "ttd", tab: "text-to-diagram" } },
+              });
+            }}
+            onModifySelection={() => setModifyDialogOpen(true)}
+          />
+        )}
       </div>
     </div>
   );
