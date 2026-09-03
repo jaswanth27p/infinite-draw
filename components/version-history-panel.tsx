@@ -140,6 +140,9 @@ export function VersionHistoryPanel({
             <li key={version.id} className="flex items-center justify-between text-sm">
               <span>
                 {version.name} — {new Date(version.createdAt).toLocaleString()}
+                {version.origin === "AUTO" && (
+                  <span className="ml-2 text-xs text-muted-foreground">Auto</span>
+                )}
               </span>
               {canEdit && (
                 <Button

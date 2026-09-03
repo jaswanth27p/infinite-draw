@@ -6,6 +6,7 @@ import { useApiClient } from "@/lib/api-client";
 export interface FileVersion {
   id: string;
   name: string;
+  origin: "MANUAL" | "AUTO";
   createdAt: string;
 }
 
