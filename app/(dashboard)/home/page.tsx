@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { FileGridSkeleton } from "@/components/file-grid-skeleton";
 import { FileBrowser } from "@/components/file-browser";
+import { HomeSearchBox } from "@/components/home-search-box";
 import { cn } from "@/lib/utils";
 import type { FileListItem, SharedFileListItem, PaginatedResponse } from "@/lib/file-types";
 
@@ -74,6 +75,7 @@ export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col gap-8 p-8">
       <h1 className="text-2xl font-semibold tracking-tight">Home</h1>
+      <HomeSearchBox />
       <Suspense fallback={<FileGridSkeleton />}>
         <RecentSection />
       </Suspense>
