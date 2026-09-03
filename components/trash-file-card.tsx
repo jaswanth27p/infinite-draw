@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTheme } from "next-themes";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,13 +20,15 @@ import {
 import { useApiClient } from "@/lib/api-client";
 
 interface TrashFileCardProps {
-  file: { id: string; name: string; thumbnailUrl: string | null; deletedAt: string };
+  file: { id: string; name: string; thumbnailUrl: string | null; thumbnailUrlDark: string | null; deletedAt: string };
 }
 
 export function TrashFileCard({ file }: TrashFileCardProps) {
   const apiClient = useApiClient();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { resolvedTheme } = useTheme();
+  const thumbnail = (resolvedTheme === "dark" ? file.thumbnailUrlDark : file.thumbnailUrl) ?? file.thumbnailUrl ?? file.thumbnailUrlDark;
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   // Covers the in-flight request itself — useTransition's isPending only
@@ -75,10 +78,10 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
         </p>
       </CardHeader>
       <CardContent>
-        {file.thumbnailUrl ? (
+        {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
           <img
-            src={file.thumbnailUrl}
+            src={thumbnail}
             alt=""
             className="aspect-video w-full rounded object-cover opacity-60"
           />
