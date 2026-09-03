@@ -45,7 +45,9 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
   }
 
   async function handleDownload() {
-    let file: { currentData: { elements: unknown[]; appState: Record<string, unknown> } };
+    let file: {
+      currentData: { elements: unknown[]; appState: Record<string, unknown>; files?: Record<string, unknown> };
+    };
     try {
       file = await apiClient(`/files/${fileId}`);
     } catch (err) {
@@ -58,6 +60,7 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
       source: "infinite-draw",
       elements: file.currentData.elements,
       appState: file.currentData.appState,
+      files: file.currentData.files ?? {},
     };
     const blob = new Blob([JSON.stringify(scene)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
