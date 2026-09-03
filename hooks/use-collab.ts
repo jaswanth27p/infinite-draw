@@ -24,6 +24,7 @@ export interface ChatMessage {
   authorId: string;
   authorName: string;
   body: string;
+  mentionedUserIds: string[];
   createdAt: string;
 }
 
@@ -286,12 +287,12 @@ export function useCollab(
   );
 
   const sendChatMessage = useCallback(
-    (body: string) => {
+    (body: string, mentionedUserIds: string[] = []) => {
       // The gateway excludes the sender from the "chat-message" broadcast
       // now (see collab.gateway.ts) — this ack is the sender's only
       // delivery of their own message, so it has to add it to `messages`
       // itself, not just tag it in `ownMessageIds`.
-      socket?.emit("send-chat-message", { fileId, body }, (message: ChatMessage) => {
+      socket?.emit("send-chat-message", { fileId, body, mentionedUserIds }, (message: ChatMessage) => {
         setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [message, ...prev]));
         setOwnMessageIds((prev) => new Set(prev).add(message.id));
       });

@@ -264,6 +264,8 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         />
       )}
       <ChatPanel
+        fileId={fileId}
+        owner={data!.owner}
         messages={messages}
         ownMessageIds={ownMessageIds}
         hasMoreMessages={hasMoreMessages}
