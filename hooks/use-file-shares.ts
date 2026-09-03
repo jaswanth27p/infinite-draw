@@ -9,6 +9,13 @@ export interface FileShare {
   user: { name: string | null; email: string };
 }
 
+export interface UserSearchResult {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+}
+
 export function useFileShares(fileId: string) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
@@ -23,11 +30,11 @@ export function useFileShares(fileId: string) {
   }
 
   const invite = useMutation({
-    mutationFn: ({ email, role }: { email: string; role: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
+    mutationFn: ({ userId, role }: { userId: string; role: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
       apiClient(`/files/${fileId}/shares`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ userId, role }),
       }),
     onSuccess: invalidateShares,
   });
@@ -59,4 +66,13 @@ export function useFileShares(fileId: string) {
   });
 
   return { sharesQuery, invite, updateRole, remove, updateGeneralAccess };
+}
+
+export function useUserSearch(fileId: string, query: string) {
+  const apiClient = useApiClient();
+  return useQuery<UserSearchResult[]>({
+    queryKey: ["file", fileId, "shares", "search", query],
+    queryFn: () => apiClient(`/files/${fileId}/shares/search?q=${encodeURIComponent(query)}`),
+    enabled: query.length >= 3,
+  });
 }

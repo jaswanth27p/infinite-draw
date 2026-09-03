@@ -5,9 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFileShares } from "@/hooks/use-file-shares";
+import { useFileShares, useUserSearch } from "@/hooks/use-file-shares";
 import { useFileQuery } from "@/hooks/use-file-query";
-import { ApiError } from "@/lib/api-client";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 interface ShareDialogProps {
   fileId: string;
@@ -18,22 +18,19 @@ interface ShareDialogProps {
 export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
   const { data: file } = useFileQuery(fileId);
   const { sharesQuery, invite, updateRole, remove, updateGeneralAccess } = useFileShares(fileId);
-  const [email, setEmail] = useState("");
+  const [query, setQuery] = useState("");
   const [inviteRole, setInviteRole] = useState<"VIEWER" | "COMMENTER" | "EDITOR">("VIEWER");
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const { data: searchResults } = useUserSearch(fileId, debouncedQuery);
 
-  async function handleInvite() {
-    if (!email.trim()) return;
+  async function handleInviteUser(userId: string) {
     setInviteError(null);
     try {
-      await invite.mutateAsync({ email: email.trim(), role: inviteRole });
-      setEmail("");
-    } catch (err) {
-      setInviteError(
-        err instanceof ApiError && err.status === 404
-          ? "No account found for that email."
-          : "Failed to invite — try again.",
-      );
+      await invite.mutateAsync({ userId, role: inviteRole });
+      setQuery("");
+    } catch {
+      setInviteError("Failed to invite — try again.");
     }
   }
 
@@ -82,26 +79,44 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
           ))}
         </ul>
 
-        <div className="flex items-center gap-2">
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            type="email"
-          />
-          <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as "VIEWER" | "COMMENTER" | "EDITOR")}>
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="VIEWER">Viewer</SelectItem>
-              <SelectItem value="COMMENTER">Commenter</SelectItem>
-              <SelectItem value="EDITOR">Editor</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleInvite} disabled={invite.isPending}>
-            Invite
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or email…"
+            />
+            <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as "VIEWER" | "COMMENTER" | "EDITOR")}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VIEWER">Viewer</SelectItem>
+                <SelectItem value="COMMENTER">Commenter</SelectItem>
+                <SelectItem value="EDITOR">Editor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {searchResults && searchResults.length > 0 && (
+            <ul className="flex flex-col gap-1 rounded-md border p-1">
+              {searchResults.map((user) => (
+                <li key={user.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleInviteUser(user.id)}
+                    disabled={invite.isPending}
+                    className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
+                  >
+                    <span className="truncate">{user.name ?? user.email}</span>
+                    {user.name && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {debouncedQuery.length >= 3 && searchResults && searchResults.length === 0 && (
+            <p className="text-sm text-muted-foreground">No matching users found.</p>
+          )}
         </div>
         {inviteError && <p className="text-sm text-destructive">{inviteError}</p>}
 
