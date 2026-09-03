@@ -7,6 +7,7 @@ import { Home, Users, Star, Trash2, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NewFileButton } from "@/components/new-file-button";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -37,8 +38,8 @@ function SidebarContent() {
   const pathname = usePathname();
   return (
     <div className="flex h-full w-64 flex-col gap-6 p-4">
-      <Link href="/home" className="px-2 font-semibold tracking-tight">
-        infinite-draw
+      <Link href="/home" className="px-2">
+        <Logo />
       </Link>
       <NewFileButton />
       <nav className="flex flex-col gap-1">
@@ -62,8 +63,8 @@ export function DashboardSidebar() {
         <SidebarContent />
       </div>
       <div className="flex items-center justify-between border-b border-border p-3 sm:hidden">
-        <Link href="/home" className="font-semibold tracking-tight">
-          infinite-draw
+        <Link href="/home">
+          <Logo />
         </Link>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
