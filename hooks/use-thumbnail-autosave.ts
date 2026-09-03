@@ -3,7 +3,7 @@
 import { useCallback, useRef } from "react";
 import { useApiClient } from "@/lib/api-client";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
-import { exportCurrentThumbnail } from "@/lib/export-thumbnail";
+import { exportCurrentThumbnails } from "@/lib/export-thumbnail";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 const THUMBNAIL_DEBOUNCE_MS = 8000;
@@ -14,16 +14,19 @@ export function useThumbnailAutosave(fileId: string) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const schedule = useCallback(
-    (api: ExcalidrawImperativeAPI, resolvedTheme: string | undefined) => {
+    (api: ExcalidrawImperativeAPI) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         void (async () => {
-          const blob = await exportCurrentThumbnail(api, resolvedTheme);
-          const thumbnailUrl = await uploadThumbnail(blob);
+          const { light, dark } = await exportCurrentThumbnails(api);
+          const [thumbnailUrl, thumbnailUrlDark] = await Promise.all([
+            uploadThumbnail(light),
+            uploadThumbnail(dark),
+          ]);
           await apiClient(`/files/${fileId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ thumbnailUrl }),
+            body: JSON.stringify({ thumbnailUrl, thumbnailUrlDark }),
           });
         })().catch(() => {
           // Best-effort: a failed background thumbnail regen must never

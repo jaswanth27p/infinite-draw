@@ -248,7 +248,6 @@ function FileEditorContent({ fileId }: { fileId: string }) {
               cancelThumbnail();
             }}
             excalidrawApi={excalidrawApi}
-            resolvedTheme={resolvedTheme}
           />
           {canEdit && (
             <ModifySelectionDialog
@@ -319,7 +318,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             if (!canEdit) return;
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>, files);
             if (excalidrawApiRef.current) {
-              scheduleThumbnail(excalidrawApiRef.current, resolvedTheme);
+              scheduleThumbnail(excalidrawApiRef.current);
             }
           }}
           onPointerUpdate={(payload) => {

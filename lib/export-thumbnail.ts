@@ -1,20 +1,16 @@
 import { exportToBlob } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-export async function exportCurrentThumbnail(
+export async function exportCurrentThumbnails(
   api: ExcalidrawImperativeAPI,
-  resolvedTheme: string | undefined,
-): Promise<Blob> {
+): Promise<{ light: Blob; dark: Blob }> {
   const elements = api.getSceneElements();
   const appState = api.getAppState();
-  return exportToBlob({
-    elements,
-    appState: {
-      ...appState,
-      theme: resolvedTheme === "dark" ? "dark" : "light",
-      exportBackground: true,
-    },
-    files: api.getFiles(),
-    maxWidthOrHeight: 512,
-  });
+  const files = api.getFiles();
+  const base = { elements, files, appState: { ...appState, exportBackground: true }, maxWidthOrHeight: 512 };
+  const [light, dark] = await Promise.all([
+    exportToBlob({ ...base, appState: { ...base.appState, theme: "light" } }),
+    exportToBlob({ ...base, appState: { ...base.appState, theme: "dark" } }),
+  ]);
+  return { light, dark };
 }

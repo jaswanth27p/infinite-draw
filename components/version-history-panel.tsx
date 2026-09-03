@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useFileVersions } from "@/hooks/use-file-versions";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
-import { exportCurrentThumbnail } from "@/lib/export-thumbnail";
+import { exportCurrentThumbnails } from "@/lib/export-thumbnail";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 interface VersionHistoryPanelProps {
@@ -45,12 +45,6 @@ interface VersionHistoryPanelProps {
    * instead of the persisted `File.currentData.appState` snapshot,
    * which can be stale — see lib/export-thumbnail.ts. */
   excalidrawApi: ExcalidrawImperativeAPI | null;
-  /** The app's current resolved theme (next-themes), forced into the
-   * exported thumbnail's background the same way it's forced into the
-   * live `<Excalidraw theme={...}>` prop — Excalidraw's own internal
-   * appState.theme doesn't always stay in sync with an externally
-   * injected theme prop. */
-  resolvedTheme: string | undefined;
 }
 
 export function VersionHistoryPanel({
@@ -60,7 +54,6 @@ export function VersionHistoryPanel({
   flushAutosave,
   cancelAutosave,
   excalidrawApi,
-  resolvedTheme,
 }: VersionHistoryPanelProps) {
   const { versionsQuery, saveVersion, restoreVersion } = useFileVersions(fileId);
   const { data: file } = useFileQuery(fileId);
@@ -85,9 +78,12 @@ export function VersionHistoryPanel({
     setSaveError(null);
     try {
       await flushAutosave();
-      const blob = await exportCurrentThumbnail(excalidrawApi, resolvedTheme);
-      const thumbnailUrl = await uploadThumbnail(blob);
-      await saveVersion.mutateAsync({ name: versionName.trim(), thumbnailUrl });
+      const { light, dark } = await exportCurrentThumbnails(excalidrawApi);
+      const [thumbnailUrl, thumbnailUrlDark] = await Promise.all([
+        uploadThumbnail(light),
+        uploadThumbnail(dark),
+      ]);
+      await saveVersion.mutateAsync({ name: versionName.trim(), thumbnailUrl, thumbnailUrlDark });
 
       setVersionName("");
       setSaveDialogOpen(false);
