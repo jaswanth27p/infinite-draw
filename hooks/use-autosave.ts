@@ -5,42 +5,43 @@ import { useCallback, useEffect, useRef } from "react";
 import { useApiClient } from "@/lib/api-client";
 import type { FileRecord } from "@/hooks/use-file-query";
 import { sanitizeAppStateForSave } from "@/lib/excalidraw-app-state";
+import { persistCanvasFiles, type HostedFilesMap } from "@/lib/persist-canvas-files";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 
 const AUTOSAVE_DEBOUNCE_MS = 2500;
 
-type AutosavePayload = { elements: unknown[]; appState: Record<string, unknown> };
+type PendingSave = { elements: unknown[]; appState: Record<string, unknown>; files: BinaryFiles };
 
-export function useAutosave(fileId: string) {
+export function useAutosave(fileId: string, initialHostedFiles: HostedFilesMap = {}) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
+  const uploadImage = useImageUpload(fileId);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingPayloadRef = useRef<AutosavePayload | null>(null);
-  // JSON of the last payload that was *successfully* saved, used by
-  // scheduleSave to skip re-arming the debounce timer when Excalidraw's
-  // onChange fires with no real change (it fires on ephemeral/derived
-  // state too, not just real edits — see AUTOSAVE_DEBOUNCE_MS usage
-  // below). Deliberately updated only after the save resolves, not when
-  // it's merely scheduled/sent.
-  const lastSavedPayloadJsonRef = useRef<string | null>(null);
+  const pendingRef = useRef<PendingSave | null>(null);
+  // JSON of the last payload that was *successfully* saved, built from the
+  // RAW (always-local data: URI) files map, not the resolved/hosted one —
+  // comparing raw-to-raw is what makes this a stable no-op check. If this
+  // instead compared against the hosted (https://) map that was actually
+  // PATCHed, every subsequent tick with an already-uploaded image would
+  // permanently look "changed" (data: URI vs https:// URI never match),
+  // triggering a save — and a redundant upload skip-check pass — forever.
+  const lastSavedRawJsonRef = useRef<string | null>(null);
+  // The hosted (https://) files map from the last successful save — used
+  // by persistCanvasFiles to skip re-uploading an id it's already seen.
+  // Seeded from the file's currently-loaded currentData.files so a file
+  // reopened with pre-existing images doesn't re-upload them on its first
+  // autosave tick.
+  const hostedFilesRef = useRef<HostedFilesMap>(initialHostedFiles);
 
   const mutation = useMutation({
-    mutationFn: (payload: AutosavePayload) =>
+    mutationFn: (payload: { elements: unknown[]; appState: Record<string, unknown>; files: HostedFilesMap }) =>
       apiClient(`/files/${fileId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentData: payload }),
       }) as Promise<FileRecord>,
     onSuccess: (updatedFile) => {
-      // Merge into the cache instead of invalidating or overwriting.
-      // Invalidating ["file", fileId] is prefix-based by default and
-      // would also invalidate ["file", fileId, "versions"], forcing the
-      // (always mounted) VersionHistoryPanel to re-fetch every
-      // historical version on every ~2.5s autosave tick, even though
-      // autosave never touches versions. A plain overwrite is wrong too:
-      // PATCH /files/:id returns the bare Prisma row, not the `role`/
-      // `generalAccess`/`generalAccessRole` fields GET computes and
-      // attaches — replacing the cache with that response would wipe
-      // those fields after the very first autosave.
       queryClient.setQueryData<FileRecord>(["file", fileId], (old) =>
         old ? { ...old, ...updatedFile } : old,
       );
@@ -54,58 +55,42 @@ export function useAutosave(fileId: string) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    // pendingPayloadRef always holds the *latest* scheduled payload (each
-    // scheduleSave call overwrites it), so reading it here — whether flush
-    // runs from a timer, a visibility/unload event, or the unmount
-    // cleanup — always saves the most recent edits, never a stale one.
-    const pending = pendingPayloadRef.current;
-    if (pending) {
-      pendingPayloadRef.current = null;
-      await mutateAsync(pending);
-      // Record the payload as saved only after the request resolves
-      // successfully — if it rejects, this is left stale on purpose so a
-      // later identical-looking scheduleSave call isn't wrongly skipped.
-      lastSavedPayloadJsonRef.current = JSON.stringify(pending);
-    }
-  }, [mutateAsync]);
+    const pending = pendingRef.current;
+    if (!pending) return;
+    pendingRef.current = null;
+
+    const hostedFiles = await persistCanvasFiles(pending.files, hostedFilesRef.current, uploadImage);
+    await mutateAsync({ elements: pending.elements, appState: pending.appState, files: hostedFiles });
+
+    hostedFilesRef.current = hostedFiles;
+    lastSavedRawJsonRef.current = JSON.stringify({
+      elements: pending.elements,
+      appState: pending.appState,
+      files: pending.files,
+    });
+  }, [mutateAsync, uploadImage]);
 
   const cancel = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    pendingPayloadRef.current = null;
+    pendingRef.current = null;
   }, []);
 
   const scheduleSave = useCallback(
-    (elements: unknown[], appState: Record<string, unknown>) => {
-      // Strip non-JSON-safe / purely interaction-transient appState
-      // fields (collaborators is a Map at runtime, etc.) before this
-      // payload ever reaches the network — see lib/excalidraw-app-state.ts.
-      const payload: AutosavePayload = { elements, appState: sanitizeAppStateForSave(appState) };
-      const payloadJson = JSON.stringify(payload);
-      if (payloadJson === lastSavedPayloadJsonRef.current) {
-        // No real change since the last successful save — Excalidraw's
-        // onChange fires on ephemeral/derived state changes too, and
-        // without this check that kept re-arming the debounce timer
-        // forever, producing an unbounded stream of byte-identical PATCH
-        // requests while the file sat idle.
-        //
-        // This also covers "edited, then undone back to the last-saved
-        // state before the debounce timer fired": clear any stale
-        // pendingPayloadRef/timer from that earlier edit too, or the
-        // still-armed timer would later flush() the stale edit even
-        // though the canvas is back to what's already on the server.
-        // "Back to last-saved" must mean "nothing to send", not just
-        // "don't schedule more work".
+    (elements: unknown[], appState: Record<string, unknown>, files: BinaryFiles) => {
+      const sanitizedAppState = sanitizeAppStateForSave(appState);
+      const rawJson = JSON.stringify({ elements, appState: sanitizedAppState, files });
+      if (rawJson === lastSavedRawJsonRef.current) {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
           timeoutRef.current = null;
         }
-        pendingPayloadRef.current = null;
+        pendingRef.current = null;
         return;
       }
-      pendingPayloadRef.current = payload;
+      pendingRef.current = { elements, appState: sanitizedAppState, files };
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -128,10 +113,6 @@ export function useAutosave(fileId: string) {
     return () => {
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      // Flush (not just clear) on unmount: same-tab navigation away from
-      // the editor (e.g. the "Files" header link) unmounts this component
-      // without ever firing beforeunload/visibilitychange, so a pending
-      // debounced edit would otherwise be silently dropped.
       void flush();
     };
   }, [flush]);

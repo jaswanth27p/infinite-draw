@@ -2,11 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useApiClient } from "@/lib/api-client";
+import type { HostedFilesMap } from "@/lib/persist-canvas-files";
 
 export interface FileRecord {
   id: string;
   name: string;
-  currentData: { elements: unknown[]; appState: Record<string, unknown> };
+  currentData: {
+    elements: unknown[];
+    appState: Record<string, unknown>;
+    files?: HostedFilesMap;
+  };
   thumbnailUrl: string | null;
   updatedAt: string;
   role: "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER";

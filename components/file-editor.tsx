@@ -93,6 +93,7 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
           initialData={{
             elements: data!.currentData.elements as never,
             appState: reviveAppStateForLoad(data!.currentData.appState),
+            files: (data!.currentData.files ?? {}) as never,
           }}
         />
       </div>
@@ -102,7 +103,7 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
 
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
-  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId);
+  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files ?? {});
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
@@ -292,8 +293,9 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             // Map; a plain `{}` (or an absent key, for pre-fix rows)
             // throws and permanently bricks this file's editor.
             appState: reviveAppStateForLoad(data!.currentData.appState),
+            files: (data!.currentData.files ?? {}) as never,
           }}
-          onChange={(elements, appState) => {
+          onChange={(elements, appState, files) => {
             // Skip entirely when the scene hasn't actually changed since
             // the last onChange — e.g. this fired only because a remote
             // peer's cursor moved (which updates the `collaborators` map
@@ -315,7 +317,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             // elements. See hooks/use-collab.ts's `broadcastElements`.
             broadcastElements(elements);
             if (!canEdit) return;
-            scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);
+            scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>, files);
             if (excalidrawApiRef.current) {
               scheduleThumbnail(excalidrawApiRef.current, resolvedTheme);
             }
