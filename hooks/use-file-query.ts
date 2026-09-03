@@ -18,6 +18,7 @@ export interface FileRecord {
   role: "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER";
   generalAccess: "RESTRICTED" | "ANYONE";
   generalAccessRole: "VIEWER" | "COMMENTER" | "EDITOR" | null;
+  owner: { id: string; name: string | null; email: string } | null;
 }
 
 export function useFileQuery(fileId: string) {

@@ -6,7 +6,7 @@ import { useApiClient } from "@/lib/api-client";
 export interface FileShare {
   id: string;
   role: "VIEWER" | "COMMENTER" | "EDITOR";
-  user: { name: string | null; email: string };
+  user: { id: string; name: string | null; email: string };
 }
 
 export interface UserSearchResult {
