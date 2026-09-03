@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useAuth } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -37,10 +37,62 @@ const Excalidraw = dynamic(
 );
 
 export function FileEditor({ fileId }: { fileId: string }) {
+  const { isSignedIn } = useAuth();
+  if (!isSignedIn) {
+    return <AnonymousFileEditor fileId={fileId} />;
+  }
   return (
     <FileSocketProvider fileId={fileId}>
       <FileEditorContent fileId={fileId} />
     </FileSocketProvider>
+  );
+}
+
+function AnonymousFileEditor({ fileId }: { fileId: string }) {
+  const { data, isLoading, isError, error } = useFileQuery(fileId);
+  const { resolvedTheme } = useTheme();
+
+  if (isLoading) {
+    return <FileEditorSkeleton />;
+  }
+
+  if (isError) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+    throw error;
+  }
+
+  const canUpgrade = data!.generalAccessRole === "COMMENTER" || data!.generalAccessRole === "EDITOR";
+
+  return (
+    <div className="relative flex flex-1 flex-col">
+      <div className="flex items-center justify-between gap-2 border-b p-2">
+        <Link href="/home" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+          <ArrowLeft className="size-4" />
+          {data!.name}
+        </Link>
+        <Link href="/sign-in" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+          Sign in
+        </Link>
+      </div>
+      {canUpgrade && (
+        <div className="border-b bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Sign in to {data!.generalAccessRole === "EDITOR" ? "edit" : "comment on"} this file — you&apos;re
+          viewing a read-only version.
+        </div>
+      )}
+      <div className="relative flex-1">
+        <Excalidraw
+          theme={resolvedTheme === "dark" ? "dark" : "light"}
+          viewModeEnabled
+          initialData={{
+            elements: data!.currentData.elements as never,
+            appState: reviveAppStateForLoad(data!.currentData.appState),
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -156,7 +208,12 @@ function FileEditorContent({ fileId }: { fileId: string }) {
     throw error;
   }
 
-  const isViewer = data!.role === "VIEWER";
+  // COMMENTER is treated the same as VIEWER for canvas purposes: the
+  // backend already gates scene-update broadcast and PATCH persistence at
+  // EDITOR (backend Task 1), so a COMMENTER's local edits would silently
+  // never save or sync if the canvas here allowed them — only chat stays
+  // available to COMMENTER, gated separately server-side.
+  const canEdit = data!.role === "EDITOR" || data!.role === "OWNER";
 
   return (
     <div className="relative flex flex-1 flex-col">
@@ -177,7 +234,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           )}
           <VersionHistoryPanel
             fileId={fileId}
-            canEdit={!isViewer}
+            canEdit={canEdit}
             onRestored={() => setRemountKey((k) => k + 1)}
             flushAutosave={flush}
             cancelAutosave={() => {
@@ -187,7 +244,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             excalidrawApi={excalidrawApi}
             resolvedTheme={resolvedTheme}
           />
-          {!isViewer && (
+          {canEdit && (
             <ModifySelectionDialog
               fileId={fileId}
               excalidrawApi={excalidrawApi}
@@ -215,7 +272,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         <Excalidraw
           key={remountKey}
           theme={resolvedTheme === "dark" ? "dark" : "light"}
-          viewModeEnabled={isViewer}
+          viewModeEnabled={!canEdit}
           excalidrawAPI={(api) => {
             excalidrawApiRef.current = api;
             setExcalidrawApi(api);
@@ -252,14 +309,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             // empty base — wiping the canvas down to just the changed
             // elements. See hooks/use-collab.ts's `broadcastElements`.
             broadcastElements(elements);
-            if (isViewer) return;
+            if (!canEdit) return;
             scheduleSave(elements as unknown[], appState as unknown as Record<string, unknown>);
             if (excalidrawApiRef.current) {
               scheduleThumbnail(excalidrawApiRef.current, resolvedTheme);
             }
           }}
           onPointerUpdate={(payload) => {
-            if (isViewer) return;
+            if (!canEdit) return;
             broadcastPointer({ pointer: payload.pointer, button: payload.button });
           }}
         >
@@ -282,14 +339,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             <MainMenu.DefaultItems.SearchMenu />
             <MainMenu.DefaultItems.ChangeCanvasBackground />
             <MainMenu.DefaultItems.ClearCanvas />
-            {!isViewer && (
+            {canEdit && (
               <MainMenu.Item onSelect={() => setModifyDialogOpen(true)} icon={<Sparkles className="size-4" />}>
                 Modify selection with AI
               </MainMenu.Item>
             )}
             <MainMenu.DefaultItems.Help />
           </MainMenu>
-          {!isViewer && (
+          {canEdit && (
             <>
               <TTDDialogTrigger />
               <TTDDialog onTextSubmit={handleTtdTextSubmit} />

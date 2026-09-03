@@ -24,12 +24,12 @@ export function useApiClient() {
 
   return useCallback(
     async (path: string, options: RequestInit = {}) => {
-      const token = await getToken();
+      const token = await getToken().catch(() => null);
       const res = await fetch(`${API_URL}${path}`, {
         ...options,
         headers: {
           ...options.headers,
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
 
