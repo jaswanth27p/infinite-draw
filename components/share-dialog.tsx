@@ -19,7 +19,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
   const { data: file } = useFileQuery(fileId);
   const { sharesQuery, invite, updateRole, remove, updateGeneralAccess } = useFileShares(fileId);
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"VIEWER" | "EDITOR">("VIEWER");
+  const [inviteRole, setInviteRole] = useState<"VIEWER" | "COMMENTER" | "EDITOR">("VIEWER");
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   async function handleInvite() {
@@ -63,13 +63,14 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
               <div className="flex items-center gap-2">
                 <Select
                   value={share.role}
-                  onValueChange={(role) => updateRole.mutate({ shareId: share.id, role: role as "VIEWER" | "EDITOR" })}
+                  onValueChange={(role) => updateRole.mutate({ shareId: share.id, role: role as "VIEWER" | "COMMENTER" | "EDITOR" })}
                 >
                   <SelectTrigger className="w-28">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="VIEWER">Viewer</SelectItem>
+                    <SelectItem value="COMMENTER">Commenter</SelectItem>
                     <SelectItem value="EDITOR">Editor</SelectItem>
                   </SelectContent>
                 </Select>
@@ -88,12 +89,13 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
             placeholder="Email address"
             type="email"
           />
-          <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as "VIEWER" | "EDITOR")}>
+          <Select value={inviteRole} onValueChange={(role) => setInviteRole(role as "VIEWER" | "COMMENTER" | "EDITOR")}>
             <SelectTrigger className="w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="VIEWER">Viewer</SelectItem>
+              <SelectItem value="COMMENTER">Commenter</SelectItem>
               <SelectItem value="EDITOR">Editor</SelectItem>
             </SelectContent>
           </Select>
@@ -119,7 +121,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
                 value={file.generalAccessRole ?? "VIEWER"}
                 onValueChange={(role: string | null) => {
                   if (role) {
-                    updateGeneralAccess.mutate({ generalAccess: "ANYONE", generalAccessRole: role as "VIEWER" | "EDITOR" })
+                    updateGeneralAccess.mutate({ generalAccess: "ANYONE", generalAccessRole: role as "VIEWER" | "COMMENTER" | "EDITOR" })
                   }
                 }}
               >
@@ -128,6 +130,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="VIEWER">Viewer</SelectItem>
+                  <SelectItem value="COMMENTER">Commenter</SelectItem>
                   <SelectItem value="EDITOR">Editor</SelectItem>
                 </SelectContent>
               </Select>

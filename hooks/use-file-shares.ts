@@ -5,7 +5,7 @@ import { useApiClient } from "@/lib/api-client";
 
 export interface FileShare {
   id: string;
-  role: "VIEWER" | "EDITOR";
+  role: "VIEWER" | "COMMENTER" | "EDITOR";
   user: { name: string | null; email: string };
 }
 
@@ -23,7 +23,7 @@ export function useFileShares(fileId: string) {
   }
 
   const invite = useMutation({
-    mutationFn: ({ email, role }: { email: string; role: "VIEWER" | "EDITOR" }) =>
+    mutationFn: ({ email, role }: { email: string; role: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
       apiClient(`/files/${fileId}/shares`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,7 +33,7 @@ export function useFileShares(fileId: string) {
   });
 
   const updateRole = useMutation({
-    mutationFn: ({ shareId, role }: { shareId: string; role: "VIEWER" | "EDITOR" }) =>
+    mutationFn: ({ shareId, role }: { shareId: string; role: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
       apiClient(`/files/${fileId}/shares/${shareId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -49,7 +49,7 @@ export function useFileShares(fileId: string) {
   });
 
   const updateGeneralAccess = useMutation({
-    mutationFn: (body: { generalAccess: "RESTRICTED" | "ANYONE"; generalAccessRole?: "VIEWER" | "EDITOR" }) =>
+    mutationFn: (body: { generalAccess: "RESTRICTED" | "ANYONE"; generalAccessRole?: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
       apiClient(`/files/${fileId}/general-access`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

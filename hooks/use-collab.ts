@@ -11,7 +11,7 @@ import { useFileSocket } from "@/hooks/file-socket-context";
 const CURSOR_THROTTLE_MS = 33;
 const FULL_RESYNC_INTERVAL_MS = 20_000;
 
-type Role = "OWNER" | "EDITOR" | "VIEWER";
+type Role = "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER";
 
 interface PointerPayload {
   pointer: { x: number; y: number; tool: "pointer" | "laser" };
