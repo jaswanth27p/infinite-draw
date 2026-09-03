@@ -12,6 +12,7 @@ import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useThumbnailAutosave } from "@/hooks/use-thumbnail-autosave";
 import { useCollab } from "@/hooks/use-collab";
+import { useVoice } from "@/hooks/use-voice";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
@@ -151,6 +152,11 @@ function FileEditorContent({ fileId }: { fileId: string }) {
     sendChatMessage,
     loadOlderMessages,
   } = useCollab(fileId, data?.role ?? "VIEWER", handleRemoteSceneUpdate, getLiveAppState);
+  // Owned here, not inside VoiceControls: VoiceControls remounts whenever
+  // the isDesktop ternary below flips branches, and useVoice's unmount
+  // cleanup hangs up the call -- keeping the hook at this stable level
+  // means a viewport resize mid-call never tears down the connection.
+  const voice = useVoice(fileId);
 
   // Applied imperatively (not through `initialData`, which only applies
   // once at mount) so a remote peer's edits land on the live canvas
@@ -265,7 +271,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         onSend={sendChatMessage}
         onLoadOlder={loadOlderMessages}
       />
-      <VoiceControls fileId={fileId} collaborators={collaborators} />
+      <VoiceControls collaborators={collaborators} {...voice} />
       <div className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
       <ThemeToggle />
       <CreditsBalance />

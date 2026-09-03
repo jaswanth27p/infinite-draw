@@ -4,12 +4,21 @@ import { useEffect, useState } from "react";
 import { Mic, MicOff, Users } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { useVoice } from "@/hooks/use-voice";
+import type { VoiceParticipant } from "@/hooks/use-voice";
 import type { Collaborator, SocketId } from "@excalidraw/excalidraw/types";
 
 interface VoiceControlsProps {
-  fileId: string;
   collaborators: Map<SocketId, Collaborator>;
+  participants: VoiceParticipant[];
+  localMuted: boolean;
+  toggleMute: () => void;
+  joinCall: () => void;
+  leaveCall: () => void;
+  inCall: boolean;
+  callFullError: boolean;
+  remoteStreams: Map<string, MediaStream>;
+  localStream: MediaStream | null;
+  failedPeers: Set<string>;
 }
 
 // Purely local rendering — no signaling involved. Polls amplitude on an
@@ -78,20 +87,24 @@ function ParticipantRow({
   );
 }
 
-export function VoiceControls({ fileId, collaborators }: VoiceControlsProps) {
-  const {
-    participants,
-    localMuted,
-    toggleMute,
-    joinCall,
-    leaveCall,
-    inCall,
-    callFullError,
-    remoteStreams,
-    localStream,
-    failedPeers,
-  } = useVoice(fileId);
-
+// Call state (useVoice) is owned by the parent, not this component: the
+// editor header remounts VoiceControls whenever the desktop/mobile Sheet
+// boundary flips (see file-editor.tsx's isDesktop ternary), and useVoice's
+// unmount cleanup calls leaveCall() -- if this component owned that hook,
+// resizing the browser mid-call would silently hang up on the user.
+export function VoiceControls({
+  collaborators,
+  participants,
+  localMuted,
+  toggleMute,
+  joinCall,
+  leaveCall,
+  inCall,
+  callFullError,
+  remoteStreams,
+  localStream,
+  failedPeers,
+}: VoiceControlsProps) {
   function resolveName(socketId: string): string {
     return collaborators.get(socketId as SocketId)?.username ?? "Someone";
   }
