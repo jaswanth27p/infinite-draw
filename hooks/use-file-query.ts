@@ -13,6 +13,7 @@ export interface FileRecord {
     files?: HostedFilesMap;
   };
   thumbnailUrl: string | null;
+  thumbnailUrlDark: string | null;
   updatedAt: string;
   role: "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER";
   generalAccess: "RESTRICTED" | "ANYONE";

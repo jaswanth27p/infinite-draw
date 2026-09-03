@@ -2,6 +2,7 @@ export interface FileListItem {
   id: string;
   name: string;
   thumbnailUrl: string | null;
+  thumbnailUrlDark: string | null;
   updatedAt: string;
   starred: boolean;
 }
@@ -15,6 +16,7 @@ export interface TrashedFileListItem {
   id: string;
   name: string;
   thumbnailUrl: string | null;
+  thumbnailUrlDark: string | null;
   deletedAt: string;
 }
 

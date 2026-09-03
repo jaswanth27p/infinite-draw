@@ -106,13 +106,21 @@ export function useNotifications() {
     // refreshed separately, and only when the user is actually there.
     socket.on(
       "thumbnail-updated",
-      ({ fileId, thumbnailUrl }: { fileId: string; thumbnailUrl: string }) => {
+      ({
+        fileId,
+        thumbnailUrl,
+        thumbnailUrlDark,
+      }: {
+        fileId: string;
+        thumbnailUrl: string;
+        thumbnailUrlDark?: string;
+      }) => {
         if (cancelled) return;
         queryClient.setQueriesData(
           { queryKey: ["file-list"] },
           (
             old:
-              | InfiniteData<PaginatedResponse<{ id: string; thumbnailUrl: string | null }>>
+              | InfiniteData<PaginatedResponse<{ id: string; thumbnailUrl: string | null; thumbnailUrlDark: string | null }>>
               | undefined,
           ) => {
             if (!old) return old;
@@ -121,7 +129,9 @@ export function useNotifications() {
               pages: old.pages.map((page) => ({
                 ...page,
                 items: page.items.map((item) =>
-                  item.id === fileId ? { ...item, thumbnailUrl } : item,
+                  item.id === fileId
+                    ? { ...item, thumbnailUrl, thumbnailUrlDark: thumbnailUrlDark ?? item.thumbnailUrlDark }
+                    : item,
                 ),
               })),
             };

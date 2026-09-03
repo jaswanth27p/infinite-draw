@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StarButton } from "@/components/star-button";
 import { FileOptionsMenu } from "@/components/file-options-menu";
@@ -13,18 +14,25 @@ function fileRole(file: FileListItem | SharedFileListItem): "OWNER" | "EDITOR" |
   return "role" in file ? file.role : "OWNER";
 }
 
+function pickThumbnail(file: FileListItem | SharedFileListItem, resolvedTheme: string | undefined): string | null {
+  const preferred = resolvedTheme === "dark" ? file.thumbnailUrlDark : file.thumbnailUrl;
+  return preferred ?? file.thumbnailUrl ?? file.thumbnailUrlDark;
+}
+
 export function FileCard({ file, view = "grid" }: FileCardProps) {
   const role = fileRole(file);
   const owner = "owner" in file ? file.owner : undefined;
+  const { resolvedTheme } = useTheme();
+  const thumbnail = pickThumbnail(file, resolvedTheme);
 
   if (view === "list") {
     return (
       <div className="flex items-center gap-1">
         <Link href={`/files/${file.id}`} className="min-w-0 flex-1">
           <Card interactive className="flex-row items-center gap-3 px-3 py-2">
-            {file.thumbnailUrl ? (
+            {thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
-              <img src={file.thumbnailUrl} alt="" className="size-10 shrink-0 rounded object-cover" />
+              <img src={thumbnail} alt="" className="size-10 shrink-0 rounded object-cover" />
             ) : (
               <div className="size-10 shrink-0 rounded bg-muted" />
             )}
@@ -61,10 +69,10 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
             )}
           </CardHeader>
           <CardContent>
-            {file.thumbnailUrl ? (
+            {thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
               <img
-                src={file.thumbnailUrl}
+                src={thumbnail}
                 alt=""
                 className="aspect-video w-full rounded object-cover"
               />
