@@ -20,8 +20,11 @@ export default function SettingsPage() {
           <CardTitle>Account</CardTitle>
           <CardDescription>Manage your profile, email, and password.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <UserProfile routing="hash" />
+        <CardContent className="overflow-x-auto">
+          <UserProfile
+            routing="hash"
+            appearance={{ elements: { rootBox: "w-full", card: "w-full shadow-none border-0" } }}
+          />
         </CardContent>
       </Card>
     </main>
