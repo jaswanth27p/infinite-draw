@@ -95,7 +95,10 @@ export function VirtualizedFileList<T extends { id: string }>({
           <ViewModeToggle view={storedView} onChange={setView} />
         </div>
       )}
-      <div ref={setParentEl} className="h-[calc(100vh-14rem)] overflow-y-auto">
+      {/* overflow-y-auto forces overflow-x to clip too (CSS spec), which cuts
+          off card hover shadows at the row/column edges. -mx-2 px-2 gives
+          the shadow room without shifting the grid's visible layout. */}
+      <div ref={setParentEl} className="-mx-2 h-[calc(100vh-14rem)] overflow-y-auto px-2 pt-2 pb-2">
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {virtualItems.map((virtualRow) => {
             const rowItems = items.slice(

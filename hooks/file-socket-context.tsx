@@ -73,7 +73,14 @@ export function FileSocketProvider({
       console.error("[file-socket] server exception", err);
     });
     s.on("disconnect", (reason) => {
-      console.error("[file-socket] disconnected", reason);
+      // "io client disconnect" = our own cleanup calling s.disconnect() on
+      // unmount — expected, not an error. Anything else (transport close,
+      // server-initiated, ping timeout) is worth flagging.
+      if (reason === "io client disconnect") {
+        console.log("[file-socket] disconnected", reason);
+      } else {
+        console.error("[file-socket] disconnected", reason);
+      }
     });
     s.on("connect", () => {
       if (!cancelled) setConnectionError(false);
