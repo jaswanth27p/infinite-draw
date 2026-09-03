@@ -46,12 +46,24 @@ function useSidebarTriggerPosition(containerRef: React.RefObject<HTMLElement | n
 
     measure();
     window.addEventListener("resize", measure);
-    const observer = new ResizeObserver(measure);
-    if (containerRef.current) observer.observe(containerRef.current);
+
+    const resizeObserver = new ResizeObserver(measure);
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+
+    // Excalidraw mounts lazily (next/dynamic, ssr:false) and the sidebar
+    // trigger it renders is conditionally removed/re-added whenever the
+    // library sidebar is docked/undocked — a resize observer on the
+    // container alone misses both cases, since the container's own box
+    // size doesn't change either time. Watch the DOM directly instead.
+    const mutationObserver = new MutationObserver(measure);
+    if (containerRef.current) {
+      mutationObserver.observe(containerRef.current, { childList: true, subtree: true });
+    }
 
     return () => {
       window.removeEventListener("resize", measure);
-      observer.disconnect();
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [containerRef]);
 
