@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,10 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
   const role = fileRole(file);
   const owner = "owner" in file ? file.owner : undefined;
   const { resolvedTheme } = useTheme();
-  const thumbnail = pickThumbnail(file, resolvedTheme);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Match SSR (theme unknown) on first client render; only use resolvedTheme post-mount.
+  const thumbnail = pickThumbnail(file, mounted ? resolvedTheme : undefined);
 
   if (view === "list") {
     return (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Download, MoreVertical, Pencil, Share2, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,10 +77,12 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
       await apiClient(`/files/${fileId}`, { method: "DELETE" });
     } catch (err) {
       console.error("Failed to move file to trash", err);
+      toast.error("Couldn't move file to trash");
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["file-list"] });
     router.refresh();
+    toast.success("Moved to trash");
   }
 
   return (

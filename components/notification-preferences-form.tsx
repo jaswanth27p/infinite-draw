@@ -8,7 +8,6 @@ const LABELS: Record<keyof NotificationPreferences, string> = {
   notifyFileShared: "A file is shared with you",
   notifyRoleChanged: "Your role on a file changes",
   notifyAccessRemoved: "Your access to a file is removed",
-  notifyGeneralAccessChanged: "General access changes on a file you own",
   notifyMentioned: "Someone mentions you in chat",
 };
 

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
     setIsSubmitting(false);
     queryClient.invalidateQueries({ queryKey: ["file-list"] });
     startTransition(() => router.refresh());
+    toast.success("File restored");
   }
 
   async function handleDeleteForever() {
@@ -67,6 +69,7 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
     setDialogOpen(false);
     queryClient.invalidateQueries({ queryKey: ["file-list"] });
     startTransition(() => router.refresh());
+    toast.success("Deleted forever");
   }
 
   return (

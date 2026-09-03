@@ -4,9 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Home, Users, Star, Trash2, Settings, Menu } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
+import { CreditsBalance } from "@/components/credits-balance";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
 
@@ -48,11 +52,17 @@ function NavLink({
   );
 }
 
-function SidebarContent({ collapsed }: { collapsed: boolean }) {
+function SidebarContent({
+  collapsed,
+  showAccountControls = false,
+}: {
+  collapsed: boolean;
+  showAccountControls?: boolean;
+}) {
   const pathname = usePathname();
   return (
     <div className={cn("flex h-full flex-col gap-6 p-4", collapsed ? "w-14" : "w-64")}>
-      <Link href="/home" className="px-2">
+      <Link href="/home" className={cn("flex", collapsed ? "justify-center" : "px-2")}>
         <Logo iconOnly={collapsed} />
       </Link>
       <nav className="flex flex-col gap-1">
@@ -60,7 +70,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
           <NavLink key={item.href} {...item} active={pathname === item.href} collapsed={collapsed} />
         ))}
       </nav>
-      <div className="mt-auto flex flex-col gap-1 border-t border-border pt-4">
+      <div className="mt-auto flex flex-col gap-4 border-t border-border pt-4">
         <NavLink
           href="/settings"
           label="Settings"
@@ -68,6 +78,18 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
           active={pathname === "/settings"}
           collapsed={collapsed}
         />
+        {showAccountControls && (
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <UserButton showName />
+              <div className="flex items-center gap-1">
+                <ThemeToggle />
+                <NotificationBell mobile />
+              </div>
+            </div>
+            <CreditsBalance />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -79,23 +101,19 @@ export function DashboardSidebar() {
 
   return (
     <>
-      <div className="hidden border-r border-border sm:block">
+      <div className="relative hidden border-r border-border sm:block">
         <div className={cn("flex h-full flex-col", collapsed ? "w-14" : "w-64")}>
-          <div className="flex-1">
-            <SidebarContent collapsed={collapsed} />
-          </div>
-          <div className="border-t border-border p-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-            </Button>
-          </div>
+          <SidebarContent collapsed={collapsed} />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute -right-3 top-16 z-10 size-6 rounded-full border-border bg-background p-0 shadow-sm"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => setCollapsed(!collapsed)}
+        >
+          {collapsed ? <ChevronRight className="size-3" /> : <ChevronLeft className="size-3" />}
+        </Button>
       </div>
       <div className="flex items-center justify-between border-b border-border p-3 sm:hidden">
         <Link href="/home">
@@ -109,7 +127,7 @@ export function DashboardSidebar() {
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation</SheetTitle>
             </SheetHeader>
-            <SidebarContent collapsed={false} />
+            <SidebarContent collapsed={false} showAccountControls />
           </SheetContent>
         </Sheet>
       </div>

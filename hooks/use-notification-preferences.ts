@@ -7,7 +7,6 @@ export interface NotificationPreferences {
   notifyFileShared: boolean;
   notifyRoleChanged: boolean;
   notifyAccessRemoved: boolean;
-  notifyGeneralAccessChanged: boolean;
   notifyMentioned: boolean;
 }
 

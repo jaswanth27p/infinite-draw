@@ -1,14 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { MessageCircle } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ChatMessage } from "@/hooks/use-collab";
@@ -23,8 +16,14 @@ interface ChatPanelProps {
   isLoadingOlderMessages: boolean;
   onSend: (body: string, mentionedUserIds: string[]) => void;
   onLoadOlder: () => void;
+  open: boolean;
+  onClose: () => void;
 }
 
+// Docked inline over the canvas (right edge), mirroring the look of
+// Excalidraw's own left-side selected-element panel (an Island: border,
+// shadow, rounded corners, no backdrop) rather than a full-viewport Sheet
+// overlay that blocks the canvas underneath.
 export function ChatPanel({
   fileId,
   owner,
@@ -34,6 +33,8 @@ export function ChatPanel({
   isLoadingOlderMessages,
   onSend,
   onLoadOlder,
+  open,
+  onClose,
 }: ChatPanelProps) {
   const { sharesQuery } = useFileShares(fileId);
   // Mention candidates are bounded to "who has access to this file" — the
@@ -101,18 +102,18 @@ export function ChatPanel({
   // chat display.
   const oldestFirst = [...messages].reverse();
 
-  return (
-    <Sheet>
-      <SheetTrigger render={<Button variant="outline" size="sm" />}>
-        <MessageCircle className="size-4" />
-        Chat
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Chat</SheetTitle>
-        </SheetHeader>
+  if (!open) return null;
 
-        <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4">
+  return (
+    <div className="absolute top-14 right-2 bottom-2 z-20 flex w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
+      <div className="flex items-center justify-between border-b p-3">
+        <span className="text-sm font-semibold">Chat</span>
+        <Button variant="ghost" size="icon-sm" aria-label="Close chat" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-2">
           {hasMoreMessages && (
             <Button variant="ghost" size="sm" onClick={onLoadOlder} disabled={isLoadingOlderMessages}>
               {isLoadingOlderMessages ? "Loading…" : "Load older messages"}
@@ -172,7 +173,6 @@ export function ChatPanel({
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
   );
 }

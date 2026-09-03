@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Sheet,
   SheetContent,
@@ -60,6 +61,7 @@ export function VersionHistoryPanel({
   const uploadThumbnail = useThumbnailUpload(fileId);
   const [versionName, setVersionName] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
   // Covers the whole export -> upload -> save sequence, not just the
   // mutation itself, so a fast double-click can't fire two concurrent
   // sequences and the button reflects "busy" from the first click onward.
@@ -87,6 +89,7 @@ export function VersionHistoryPanel({
 
       setVersionName("");
       setSaveDialogOpen(false);
+      toast.success("Version saved");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save version");
     } finally {
@@ -100,8 +103,22 @@ export function VersionHistoryPanel({
     // able to land after the restore and clobber the just-restored
     // currentData with stale pre-restore content.
     cancelAutosave();
-    restoreVersion.mutate(versionId, { onSuccess: onRestored });
+    restoreVersion.mutate(versionId, {
+      onSuccess: () => {
+        onRestored();
+        toast.success("Version restored");
+      },
+      onError: () => toast.error("Couldn't restore version"),
+    });
   }
+
+  const trimmedSearch = search.trim().toLowerCase();
+  const filteredVersions = trimmedSearch
+    ? versionsQuery.data?.filter((version) =>
+        version.name.toLowerCase().includes(trimmedSearch) ||
+        new Date(version.createdAt).toLocaleString().toLowerCase().includes(trimmedSearch),
+      )
+    : versionsQuery.data;
 
   return (
     <Sheet>
@@ -131,8 +148,20 @@ export function VersionHistoryPanel({
           </Dialog>
         )}
 
-        <ul className="mt-4 flex flex-col gap-2 px-4">
-          {versionsQuery.data?.map((version) => (
+        <div className="mt-4 px-4">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search versions…"
+          />
+        </div>
+
+        {trimmedSearch && filteredVersions?.length === 0 && (
+          <p className="mt-2 px-4 text-sm text-muted-foreground">No matching versions.</p>
+        )}
+
+        <ul className="mt-2 flex flex-col gap-2 px-4">
+          {filteredVersions?.map((version) => (
             <li key={version.id} className="flex items-center justify-between text-sm">
               <span>
                 {version.name} — {new Date(version.createdAt).toLocaleString()}

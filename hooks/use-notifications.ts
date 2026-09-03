@@ -13,7 +13,7 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
 
 export interface NotificationItem {
   id: string;
-  type: "FILE_SHARED" | "ROLE_CHANGED" | "ACCESS_REMOVED" | "GENERAL_ACCESS_CHANGED" | "MENTIONED";
+  type: "FILE_SHARED" | "ROLE_CHANGED" | "ACCESS_REMOVED" | "MENTIONED";
   actorName: string | null;
   fileId: string | null;
   fileName: string;

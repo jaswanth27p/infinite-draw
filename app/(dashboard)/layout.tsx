@@ -8,7 +8,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col sm:flex-row">
       <DashboardSidebar />
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <div id="dashboard-scroll" className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <DashboardTopbar />
         {children}
       </div>

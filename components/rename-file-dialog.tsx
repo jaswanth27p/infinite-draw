@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ export function RenameFileDialog({ fileId, currentName, open, onOpenChange }: Re
     onOpenChange(false);
     queryClient.invalidateQueries({ queryKey: ["file-list"] });
     router.refresh();
+    toast.success("File renamed");
   }
 
   return (

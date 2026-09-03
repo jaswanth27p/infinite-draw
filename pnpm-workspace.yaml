@@ -1,3 +1,5 @@
 allowBuilds:
   sharp: false
   unrs-resolver: false
+patchedDependencies:
+  '@excalidraw/excalidraw': patches/@excalidraw__excalidraw.patch

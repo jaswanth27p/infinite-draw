@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
     try {
       await invite.mutateAsync({ userId, role: inviteRole });
       setQuery("");
+      toast.success("Invited");
     } catch {
       setInviteError("Failed to invite — try again.");
     }
@@ -37,13 +39,23 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
   function handleGeneralAccessChange(value: string | null) {
     if (!value) return;
     if (value === "RESTRICTED") {
-      updateGeneralAccess.mutate({ generalAccess: "RESTRICTED" });
+      updateGeneralAccess.mutate(
+        { generalAccess: "RESTRICTED" },
+        { onSuccess: () => toast.success("Sharing settings updated"), onError: () => toast.error("Couldn't update sharing settings") },
+      );
     } else {
-      updateGeneralAccess.mutate({
-        generalAccess: "ANYONE",
-        generalAccessRole: file?.generalAccessRole ?? "VIEWER",
-      });
+      updateGeneralAccess.mutate(
+        { generalAccess: "ANYONE", generalAccessRole: file?.generalAccessRole ?? "VIEWER" },
+        { onSuccess: () => toast.success("Sharing settings updated"), onError: () => toast.error("Couldn't update sharing settings") },
+      );
     }
+  }
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(window.location.href).then(
+      () => toast.success("Link copied"),
+      () => toast.error("Couldn't copy link"),
+    );
   }
 
   return (
@@ -53,14 +65,19 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
           <DialogTitle>Share this file</DialogTitle>
         </DialogHeader>
 
-        <ul className="flex flex-col gap-2">
+        <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto">
           {sharesQuery.data?.map((share) => (
             <li key={share.id} className="flex items-center justify-between gap-2 text-sm">
               <span className="truncate">{share.user.name ?? share.user.email}</span>
               <div className="flex items-center gap-2">
                 <Select
                   value={share.role}
-                  onValueChange={(role) => updateRole.mutate({ shareId: share.id, role: role as "VIEWER" | "COMMENTER" | "EDITOR" })}
+                  onValueChange={(role) =>
+                    updateRole.mutate(
+                      { shareId: share.id, role: role as "VIEWER" | "COMMENTER" | "EDITOR" },
+                      { onSuccess: () => toast.success("Role updated"), onError: () => toast.error("Couldn't update role") },
+                    )
+                  }
                 >
                   <SelectTrigger className="w-28">
                     <SelectValue />
@@ -71,7 +88,16 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
                     <SelectItem value="EDITOR">Editor</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="sm" onClick={() => remove.mutate(share.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    remove.mutate(share.id, {
+                      onSuccess: () => toast.success("Removed"),
+                      onError: () => toast.error("Couldn't remove"),
+                    })
+                  }
+                >
                   Remove
                 </Button>
               </div>
@@ -98,7 +124,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
             </Select>
           </div>
           {searchResults && searchResults.length > 0 && (
-            <ul className="flex flex-col gap-1 rounded-md border p-1">
+            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border p-1">
               {searchResults.map((user) => (
                 <li key={user.id}>
                   <button
@@ -136,7 +162,10 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
                 value={file.generalAccessRole ?? "VIEWER"}
                 onValueChange={(role: string | null) => {
                   if (role) {
-                    updateGeneralAccess.mutate({ generalAccess: "ANYONE", generalAccessRole: role as "VIEWER" | "COMMENTER" | "EDITOR" })
+                    updateGeneralAccess.mutate(
+                      { generalAccess: "ANYONE", generalAccessRole: role as "VIEWER" | "COMMENTER" | "EDITOR" },
+                      { onSuccess: () => toast.success("Sharing settings updated"), onError: () => toast.error("Couldn't update sharing settings") },
+                    )
                   }
                 }}
               >
@@ -155,7 +184,7 @@ export function ShareDialog({ fileId, open, onOpenChange }: ShareDialogProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigator.clipboard.writeText(window.location.href)}
+              onClick={handleCopyLink}
             >
               Copy link
             </Button>

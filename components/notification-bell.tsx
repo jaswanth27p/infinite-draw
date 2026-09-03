@@ -4,27 +4,29 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { useNotifications, type NotificationItem } from "@/hooks/use-notifications";
+import { useNotifications } from "@/hooks/use-notifications";
+import { describeNotification } from "@/lib/notification-text";
 
-function describeNotification(n: NotificationItem): string {
-  const actor = n.actorName ?? "Someone";
-  const roleLabel = n.role === "EDITOR" ? "Editor" : n.role === "COMMENTER" ? "Commenter" : "Viewer";
-  switch (n.type) {
-    case "FILE_SHARED":
-      return `${actor} shared "${n.fileName}" with you as ${roleLabel}`;
-    case "ROLE_CHANGED":
-      return `${actor} changed your role on "${n.fileName}" to ${roleLabel}`;
-    case "ACCESS_REMOVED":
-      return `${actor} removed your access to "${n.fileName}"`;
-    case "GENERAL_ACCESS_CHANGED":
-      return `General access updated for "${n.fileName}"`;
-    case "MENTIONED":
-      return `${actor} mentioned you in "${n.fileName}"`;
-  }
-}
-
-export function NotificationBell() {
+// On mobile the bell lives inside the nav drawer rather than a cramped
+// topbar -- a Popover nested inside the drawer's Sheet is awkward to open
+// and gets clipped, so `mobile` swaps it for a plain link to a dedicated
+// /notifications page instead of the dropdown.
+export function NotificationBell({ mobile = false }: { mobile?: boolean } = {}) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+
+  if (mobile) {
+    return (
+      <Button variant="ghost" size="icon" className="relative" render={<Link href="/notifications" />}>
+        <Bell />
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+        <span className="sr-only">Notifications</span>
+      </Button>
+    );
+  }
 
   return (
     <Popover>

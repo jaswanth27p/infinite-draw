@@ -5,7 +5,7 @@ import { CreditsBalance } from "@/components/credits-balance";
 
 export function DashboardTopbar() {
   return (
-    <div className="sticky top-0 z-10 flex shrink-0 items-center justify-end gap-1 border-b border-border bg-background px-4 py-2">
+    <div className="sticky top-0 z-10 hidden shrink-0 items-center justify-end gap-1 border-b border-border bg-background px-4 py-2 sm:flex">
       <ThemeToggle />
       <NotificationBell />
       <CreditsBalance />

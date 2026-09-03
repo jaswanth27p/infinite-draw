@@ -9,8 +9,8 @@ export async function exportCurrentThumbnails(
   const files = api.getFiles();
   const base = { elements, files, appState: { ...appState, exportBackground: true }, maxWidthOrHeight: 512 };
   const [light, dark] = await Promise.all([
-    exportToBlob({ ...base, appState: { ...base.appState, theme: "light" } }),
-    exportToBlob({ ...base, appState: { ...base.appState, theme: "dark" } }),
+    exportToBlob({ ...base, appState: { ...base.appState, theme: "light", exportWithDarkMode: false } }),
+    exportToBlob({ ...base, appState: { ...base.appState, theme: "dark", exportWithDarkMode: true } }),
   ]);
   return { light, dark };
 }

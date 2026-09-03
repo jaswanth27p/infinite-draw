@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { UseInfiniteQueryResult, InfiniteData } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
@@ -58,14 +58,38 @@ export function VirtualizedFileList<T extends { id: string }>({
   const columns = useColumnCount(parentEl);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, isError, error, refetch } = query;
 
+  // The list scrolls with the rest of the page (the dashboard layout's
+  // scroll container), not in its own boxed-off area -- so the virtualizer
+  // is measured against that ancestor instead of `parentEl` itself.
+  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setScrollElement(document.getElementById("dashboard-scroll"));
+  }, []);
+
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    if (!parentEl || !scrollElement) return;
+    const measure = () => {
+      const listRect = parentEl.getBoundingClientRect();
+      const scrollRect = scrollElement.getBoundingClientRect();
+      setScrollMargin(listRect.top - scrollRect.top + scrollElement.scrollTop);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(scrollElement);
+    observer.observe(parentEl);
+    return () => observer.disconnect();
+  }, [parentEl, scrollElement]);
+
   const items = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
   const effectiveColumns = view === "grid" ? columns : 1;
   const rowCount = Math.ceil(items.length / effectiveColumns) + (hasNextPage ? 1 : 0);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
-    getScrollElement: () => parentEl,
+    getScrollElement: () => scrollElement,
     estimateSize: () => (view === "grid" ? GRID_ROW_HEIGHT : LIST_ROW_HEIGHT),
+    scrollMargin,
     overscan: 5,
   });
 
@@ -98,10 +122,7 @@ export function VirtualizedFileList<T extends { id: string }>({
       ) : items.length === 0 ? (
         <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyDescription} />
       ) : (
-        // overflow-y-auto forces overflow-x to clip too (CSS spec), which cuts
-        // off card hover shadows at the row/column edges. -mx-2 px-2 gives
-        // the shadow room without shifting the grid's visible layout.
-        <div ref={setParentEl} className="-mx-2 h-[calc(100vh-14rem)] overflow-y-auto px-2 pt-2 pb-2">
+        <div ref={setParentEl} className="pb-8">
           <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
             {virtualItems.map((virtualRow) => {
               const rowItems = items.slice(
@@ -117,7 +138,7 @@ export function VirtualizedFileList<T extends { id: string }>({
                     left: 0,
                     width: "100%",
                     height: virtualRow.size,
-                    transform: `translateY(${virtualRow.start}px)`,
+                    transform: `translateY(${virtualRow.start - scrollMargin}px)`,
                     ...(view === "grid"
                       ? { display: "grid", gap: "1rem", gridTemplateColumns: `repeat(${effectiveColumns}, minmax(0, 1fr))` }
                       : {}),

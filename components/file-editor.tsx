@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { ArrowLeft, Loader2, MoreVertical } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle, MoreVertical } from "lucide-react";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
@@ -98,7 +98,17 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
             appState: reviveAppStateForLoad(data!.currentData.appState),
             files: (data!.currentData.files ?? {}) as never,
           }}
-        />
+        >
+          {/* Same rationale as FileEditorContent's <MainMenu> below: this
+              fully replaces Excalidraw's default menu so the Socials group
+              (GitHub/Discord/X/etc.) never renders for anonymous viewers. */}
+          <MainMenu>
+            <MainMenu.DefaultItems.Export />
+            <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.DefaultItems.SearchMenu />
+            <MainMenu.DefaultItems.Help />
+          </MainMenu>
+        </Excalidraw>
       </div>
     </div>
   );
@@ -118,6 +128,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const [remountKey, setRemountKey] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { generateMermaid } = useAiDiagram(fileId);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -263,16 +274,15 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           onOpenChange={setModifyDialogOpen}
         />
       )}
-      <ChatPanel
-        fileId={fileId}
-        owner={data!.owner}
-        messages={messages}
-        ownMessageIds={ownMessageIds}
-        hasMoreMessages={hasMoreMessages}
-        isLoadingOlderMessages={isLoadingOlderMessages}
-        onSend={sendChatMessage}
-        onLoadOlder={loadOlderMessages}
-      />
+      <Button
+        variant="outline"
+        size="sm"
+        aria-expanded={chatOpen}
+        onClick={() => setChatOpen((v) => !v)}
+      >
+        <MessageCircle className="size-4" />
+        Chat
+      </Button>
       <VoiceControls collaborators={collaborators} {...voice} />
       <div className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
       <ThemeToggle />
@@ -402,6 +412,18 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             onModifySelection={() => setModifyDialogOpen(true)}
           />
         )}
+        <ChatPanel
+          fileId={fileId}
+          owner={data!.owner}
+          messages={messages}
+          ownMessageIds={ownMessageIds}
+          hasMoreMessages={hasMoreMessages}
+          isLoadingOlderMessages={isLoadingOlderMessages}
+          onSend={sendChatMessage}
+          onLoadOlder={loadOlderMessages}
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
       </div>
     </div>
   );

@@ -39,6 +39,8 @@ export function useFileShares(fileId: string) {
     onSuccess: invalidateShares,
   });
 
+  const sharesKey = ["file", fileId, "shares"];
+
   const updateRole = useMutation({
     mutationFn: ({ shareId, role }: { shareId: string; role: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
       apiClient(`/files/${fileId}/shares/${shareId}`, {
@@ -46,14 +48,38 @@ export function useFileShares(fileId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
       }),
-    onSuccess: invalidateShares,
+    onMutate: async ({ shareId, role }) => {
+      await queryClient.cancelQueries({ queryKey: sharesKey });
+      const previous = queryClient.getQueryData<FileShare[]>(sharesKey);
+      queryClient.setQueryData<FileShare[]>(sharesKey, (shares) =>
+        shares?.map((share) => (share.id === shareId ? { ...share, role } : share)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(sharesKey, context.previous);
+    },
+    onSettled: invalidateShares,
   });
 
   const remove = useMutation({
     mutationFn: (shareId: string) =>
       apiClient(`/files/${fileId}/shares/${shareId}`, { method: "DELETE" }),
-    onSuccess: invalidateShares,
+    onMutate: async (shareId) => {
+      await queryClient.cancelQueries({ queryKey: sharesKey });
+      const previous = queryClient.getQueryData<FileShare[]>(sharesKey);
+      queryClient.setQueryData<FileShare[]>(sharesKey, (shares) =>
+        shares?.filter((share) => share.id !== shareId),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(sharesKey, context.previous);
+    },
+    onSettled: invalidateShares,
   });
+
+  const fileKey = ["file", fileId];
 
   const updateGeneralAccess = useMutation({
     mutationFn: (body: { generalAccess: "RESTRICTED" | "ANYONE"; generalAccessRole?: "VIEWER" | "COMMENTER" | "EDITOR" }) =>
@@ -62,7 +88,18 @@ export function useFileShares(fileId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["file", fileId], exact: true }),
+    onMutate: async (body) => {
+      await queryClient.cancelQueries({ queryKey: fileKey, exact: true });
+      const previous = queryClient.getQueryData<Record<string, unknown>>(fileKey);
+      queryClient.setQueryData<Record<string, unknown>>(fileKey, (file) =>
+        file ? { ...file, ...body } : file,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(fileKey, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: fileKey, exact: true }),
   });
 
   return { sharesQuery, invite, updateRole, remove, updateGeneralAccess };
