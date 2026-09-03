@@ -13,7 +13,7 @@ const AUTOSAVE_DEBOUNCE_MS = 2500;
 
 type PendingSave = { elements: unknown[]; appState: Record<string, unknown>; files: BinaryFiles };
 
-export function useAutosave(fileId: string, initialHostedFiles: HostedFilesMap = {}) {
+export function useAutosave(fileId: string, initialHostedFiles?: HostedFilesMap) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   const uploadImage = useImageUpload(fileId);
@@ -31,8 +31,26 @@ export function useAutosave(fileId: string, initialHostedFiles: HostedFilesMap =
   // by persistCanvasFiles to skip re-uploading an id it's already seen.
   // Seeded from the file's currently-loaded currentData.files so a file
   // reopened with pre-existing images doesn't re-upload them on its first
-  // autosave tick.
-  const hostedFilesRef = useRef<HostedFilesMap>(initialHostedFiles);
+  // autosave tick. Starts empty here — the actual seeding happens in the
+  // effect below, since `initialHostedFiles` is `undefined` on this
+  // component's first render (useFileQuery has no SSR prefetch, so `data`
+  // — and therefore `initialHostedFiles` — only becomes defined a few
+  // renders later) and `useRef`'s argument is only consumed on that first
+  // render. Seeding here directly would permanently lock this ref to `{}`.
+  const hostedFilesRef = useRef<HostedFilesMap>({});
+  // Guards the seeding effect below so it fires exactly once — the first
+  // time `initialHostedFiles` is actually defined — and never again after
+  // that, even as `initialHostedFiles` keeps changing identity on later
+  // renders (e.g. query refetches). Without this guard, a later render
+  // could stomp `hostedFilesRef` back to the file's stale loaded map after
+  // a real `flush()` has already updated it with newly-uploaded ids.
+  const hasSeededHostedFilesRef = useRef(false);
+  useEffect(() => {
+    if (!hasSeededHostedFilesRef.current && initialHostedFiles) {
+      hostedFilesRef.current = initialHostedFiles;
+      hasSeededHostedFilesRef.current = true;
+    }
+  }, [initialHostedFiles]);
 
   const mutation = useMutation({
     mutationFn: (payload: { elements: unknown[]; appState: Record<string, unknown>; files: HostedFilesMap }) =>

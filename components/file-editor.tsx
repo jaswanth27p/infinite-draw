@@ -103,7 +103,7 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
 
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
-  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files ?? {});
+  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files);
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const [remountKey, setRemountKey] = useState(0);
