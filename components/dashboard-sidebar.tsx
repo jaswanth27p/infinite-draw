@@ -6,7 +6,6 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Home, Users, Star, Trash2, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { NewFileButton } from "@/components/new-file-button";
 import { Logo } from "@/components/logo";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
@@ -56,7 +55,6 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
       <Link href="/home" className="px-2">
         <Logo iconOnly={collapsed} />
       </Link>
-      <NewFileButton />
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} {...item} active={pathname === item.href} collapsed={collapsed} />
