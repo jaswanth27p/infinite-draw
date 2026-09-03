@@ -7,7 +7,7 @@ export interface FileListItem {
 }
 
 export interface SharedFileListItem extends FileListItem {
-  role: "EDITOR" | "VIEWER";
+  role: "EDITOR" | "COMMENTER" | "VIEWER";
   owner: { name: string | null; email: string };
 }
 

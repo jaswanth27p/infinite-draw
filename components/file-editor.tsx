@@ -37,7 +37,10 @@ const Excalidraw = dynamic(
 );
 
 export function FileEditor({ fileId }: { fileId: string }) {
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) {
+    return <FileEditorSkeleton />;
+  }
   if (!isSignedIn) {
     return <AnonymousFileEditor fileId={fileId} />;
   }

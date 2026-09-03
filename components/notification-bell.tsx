@@ -8,7 +8,7 @@ import { useNotifications, type NotificationItem } from "@/hooks/use-notificatio
 
 function describeNotification(n: NotificationItem): string {
   const actor = n.actorName ?? "Someone";
-  const roleLabel = n.role === "EDITOR" ? "Editor" : "Viewer";
+  const roleLabel = n.role === "EDITOR" ? "Editor" : n.role === "COMMENTER" ? "Commenter" : "Viewer";
   switch (n.type) {
     case "FILE_SHARED":
       return `${actor} shared "${n.fileName}" with you as ${roleLabel}`;

@@ -21,7 +21,7 @@ interface FileOptionsMenuProps {
   fileId: string;
   fileName: string;
   starred: boolean;
-  role: "OWNER" | "EDITOR" | "VIEWER";
+  role: "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER";
   className?: string;
 }
 

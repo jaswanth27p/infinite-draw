@@ -17,7 +17,7 @@ export interface NotificationItem {
   actorName: string | null;
   fileId: string | null;
   fileName: string;
-  role: "VIEWER" | "EDITOR" | null;
+  role: "VIEWER" | "COMMENTER" | "EDITOR" | null;
   read: boolean;
   createdAt: string;
 }

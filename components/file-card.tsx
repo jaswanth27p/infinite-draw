@@ -9,7 +9,7 @@ interface FileCardProps {
   view?: "grid" | "list";
 }
 
-function fileRole(file: FileListItem | SharedFileListItem): "OWNER" | "EDITOR" | "VIEWER" {
+function fileRole(file: FileListItem | SharedFileListItem): "OWNER" | "EDITOR" | "COMMENTER" | "VIEWER" {
   return "role" in file ? file.role : "OWNER";
 }
 
@@ -32,7 +32,8 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
               <p className="truncate text-sm">{file.name}</p>
               {owner && (
                 <p className="truncate text-xs text-muted-foreground">
-                  Shared by {owner.name ?? owner.email} · {role === "EDITOR" ? "Editor" : "Viewer"}
+                  Shared by {owner.name ?? owner.email} ·{" "}
+                  {role === "EDITOR" ? "Editor" : role === "COMMENTER" ? "Commenter" : "Viewer"}
                 </p>
               )}
             </div>
@@ -54,7 +55,8 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
             <CardTitle className="truncate text-sm">{file.name}</CardTitle>
             {owner && (
               <p className="truncate text-xs text-muted-foreground">
-                Shared by {owner.name ?? owner.email} · {role === "EDITOR" ? "Editor" : "Viewer"}
+                Shared by {owner.name ?? owner.email} ·{" "}
+                {role === "EDITOR" ? "Editor" : role === "COMMENTER" ? "Commenter" : "Viewer"}
               </p>
             )}
           </CardHeader>
