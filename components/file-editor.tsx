@@ -5,13 +5,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, MoreVertical } from "lucide-react";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useThumbnailAutosave } from "@/hooks/use-thumbnail-autosave";
 import { useCollab } from "@/hooks/use-collab";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
@@ -25,6 +26,7 @@ import { FileEditorSkeleton } from "@/components/file-editor-skeleton";
 import { NotificationBell } from "@/components/notification-bell";
 import { CreditsBalance } from "@/components/credits-balance";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
@@ -106,6 +108,12 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files);
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
+  // Tailwind's sm: breakpoint. Drives a genuine single-mount switch (see
+  // editorControls below) between the desktop inline row and the mobile
+  // Sheet -- not a CSS-only hidden/sm:flex toggle, which would keep both
+  // copies mounted regardless of visibility and double-play VoiceControls'
+  // live <audio> elements during a joined call.
+  const isDesktop = useMediaQuery("(min-width: 640px)");
   const [remountKey, setRemountKey] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
@@ -221,6 +229,51 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   // available to COMMENTER, gated separately server-side.
   const canEdit = data!.role === "EDITOR" || data!.role === "OWNER";
 
+  // Defined once, mounted in exactly one of the two branches below
+  // (desktop inline row, or inside the mobile Sheet) via the isDesktop
+  // ternary -- never both at once. VoiceControls renders live <audio>
+  // elements once a call is joined; a CSS-only hidden/sm:flex approach
+  // would keep a second copy mounted (just visually hidden) and double-
+  // play that audio regardless of which is visible.
+  const editorControls = (
+    <>
+      {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
+      <VersionHistoryPanel
+        fileId={fileId}
+        canEdit={canEdit}
+        onRestored={() => setRemountKey((k) => k + 1)}
+        flushAutosave={flush}
+        cancelAutosave={() => {
+          cancel();
+          cancelThumbnail();
+        }}
+        excalidrawApi={excalidrawApi}
+      />
+      {canEdit && (
+        <ModifySelectionDialog
+          fileId={fileId}
+          excalidrawApi={excalidrawApi}
+          open={modifyDialogOpen}
+          onOpenChange={setModifyDialogOpen}
+        />
+      )}
+      <ChatPanel
+        messages={messages}
+        ownMessageIds={ownMessageIds}
+        hasMoreMessages={hasMoreMessages}
+        isLoadingOlderMessages={isLoadingOlderMessages}
+        onSend={sendChatMessage}
+        onLoadOlder={loadOlderMessages}
+      />
+      <VoiceControls fileId={fileId} collaborators={collaborators} />
+      <div className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+      <ThemeToggle />
+      <CreditsBalance />
+      <NotificationBell />
+      <UserButton />
+    </>
+  );
+
   return (
     <div className="relative flex flex-1 flex-col">
       <div className="flex items-center justify-between gap-2 border-b p-2">
@@ -229,7 +282,6 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           {data!.name}
         </Link>
         <div className="flex items-center gap-2">
-          {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
           {data!.role === "OWNER" && (
             <>
               <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
@@ -238,39 +290,21 @@ function FileEditorContent({ fileId }: { fileId: string }) {
               <ShareDialog fileId={fileId} open={shareDialogOpen} onOpenChange={setShareDialogOpen} />
             </>
           )}
-          <VersionHistoryPanel
-            fileId={fileId}
-            canEdit={canEdit}
-            onRestored={() => setRemountKey((k) => k + 1)}
-            flushAutosave={flush}
-            cancelAutosave={() => {
-              cancel();
-              cancelThumbnail();
-            }}
-            excalidrawApi={excalidrawApi}
-          />
-          {canEdit && (
-            <ModifySelectionDialog
-              fileId={fileId}
-              excalidrawApi={excalidrawApi}
-              open={modifyDialogOpen}
-              onOpenChange={setModifyDialogOpen}
-            />
+          {isDesktop ? (
+            <div className="flex items-center gap-2">{editorControls}</div>
+          ) : (
+            <Sheet>
+              <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="More options" />}>
+                <MoreVertical className="size-4" />
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader>
+                  <SheetTitle className="sr-only">Editor options</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-3 p-4">{editorControls}</div>
+              </SheetContent>
+            </Sheet>
           )}
-          <ChatPanel
-            messages={messages}
-            ownMessageIds={ownMessageIds}
-            hasMoreMessages={hasMoreMessages}
-            isLoadingOlderMessages={isLoadingOlderMessages}
-            onSend={sendChatMessage}
-            onLoadOlder={loadOlderMessages}
-          />
-          <VoiceControls fileId={fileId} collaborators={collaborators} />
-          <div className="mx-1 h-5 w-px bg-border" aria-hidden />
-          <ThemeToggle />
-          <CreditsBalance />
-          <NotificationBell />
-          <UserButton />
         </div>
       </div>
       <div ref={canvasWrapperRef} className="relative flex-1">
