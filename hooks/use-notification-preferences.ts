@@ -8,6 +8,7 @@ export interface NotificationPreferences {
   notifyRoleChanged: boolean;
   notifyAccessRemoved: boolean;
   notifyGeneralAccessChanged: boolean;
+  notifyMentioned: boolean;
 }
 
 export function useNotificationPreferences() {

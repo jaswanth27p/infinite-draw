@@ -18,6 +18,8 @@ function describeNotification(n: NotificationItem): string {
       return `${actor} removed your access to "${n.fileName}"`;
     case "GENERAL_ACCESS_CHANGED":
       return `General access updated for "${n.fileName}"`;
+    case "MENTIONED":
+      return `${actor} mentioned you in "${n.fileName}"`;
   }
 }
 
@@ -55,7 +57,7 @@ export function NotificationBell() {
             notifications.map((n) => (
               <Link
                 key={n.id}
-                href={n.fileId ? `/files/${n.fileId}` : "#"}
+                href={n.type === "ACCESS_REMOVED" ? "/home" : n.fileId ? `/files/${n.fileId}` : "#"}
                 onClick={() => markRead(n.id)}
                 className={`flex flex-col gap-0.5 rounded-lg px-2 py-2 text-sm hover:bg-muted ${
                   n.read ? "" : "bg-accent/50"

@@ -9,6 +9,7 @@ const LABELS: Record<keyof NotificationPreferences, string> = {
   notifyRoleChanged: "Your role on a file changes",
   notifyAccessRemoved: "Your access to a file is removed",
   notifyGeneralAccessChanged: "General access changes on a file you own",
+  notifyMentioned: "Someone mentions you in chat",
 };
 
 const PREFERENCE_KEYS = Object.keys(LABELS) as (keyof NotificationPreferences)[];
