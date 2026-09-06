@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Home, Users, Star, Trash2, Settings, Menu } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
@@ -61,6 +61,7 @@ function SidebarContent({
   showAccountControls?: boolean;
 }) {
   const pathname = usePathname();
+  const { user } = useUser();
   return (
     <div className={cn("flex h-full flex-col gap-6 p-4", collapsed ? "w-14" : "w-64")}>
       <Link href="/home" className={cn("flex", collapsed ? "justify-center" : "px-2")}>
@@ -83,16 +84,10 @@ function SidebarContent({
           <div className="flex flex-col gap-1 border-t border-border pt-4">
             <ThemeToggle showLabel />
             <NotificationBell mobile showLabel />
-            <UserButton
-              showName
-              appearance={{
-                elements: {
-                  rootBox: "w-full",
-                  userButtonBox: "w-full max-w-full flex-row-reverse justify-start gap-2 px-2.5 py-1.5",
-                  userButtonOuterIdentifier: "truncate pl-0 text-left",
-                },
-              }}
-            />
+            <div className="flex w-full items-center gap-2 px-2.5 py-1.5">
+              <UserButton appearance={{ elements: { rootBox: "shrink-0" } }} />
+              <span className="truncate text-sm">{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</span>
+            </div>
             {/* <CreditsBalance /> */}
           </div>
         )}

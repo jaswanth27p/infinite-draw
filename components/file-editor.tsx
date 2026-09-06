@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Loader2, MessageCircle, MoreVertical } from "lucide-react";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { UserButton, useAuth, useUser } from "@clerk/nextjs";
 import "@excalidraw/excalidraw/index.css";
 import { useFileQuery } from "@/hooks/use-file-query";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -121,6 +121,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files);
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
+  const { user } = useUser();
   // Tailwind's sm: breakpoint. Drives a genuine single-mount switch (see
   // editorControls below) between the desktop inline row and the mobile
   // Sheet -- not a CSS-only hidden/sm:flex toggle, which would keep both
@@ -308,16 +309,10 @@ function FileEditorContent({ fileId }: { fileId: string }) {
       <ThemeToggle showLabel />
       {/* <CreditsBalance /> */}
       <NotificationBell showLabel />
-      <UserButton
-        showName
-        appearance={{
-          elements: {
-            rootBox: "w-full",
-            userButtonBox: "w-full max-w-full flex-row-reverse justify-start gap-2 px-2.5 py-1.5",
-            userButtonOuterIdentifier: "truncate pl-0 text-left",
-          },
-        }}
-      />
+      <div className="flex w-full items-center gap-2 px-2.5 py-1.5">
+        <UserButton appearance={{ elements: { rootBox: "shrink-0" } }} />
+        <span className="truncate text-sm">{user?.fullName ?? user?.primaryEmailAddress?.emailAddress}</span>
+      </div>
     </div>
   );
 
