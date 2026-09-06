@@ -118,7 +118,7 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
 
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
-  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files);
+  const { scheduleSave, flush, cancel } = useAutosave(fileId, data?.currentData.files);
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const { user } = useUser();
@@ -257,7 +257,6 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   // play that audio regardless of which is visible.
   const editorControls = (
     <>
-      {isSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
       <VersionHistoryPanel
         fileId={fileId}
         canEdit={canEdit}
