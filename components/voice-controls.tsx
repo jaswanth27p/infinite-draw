@@ -1,29 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, MicOff, Users } from "lucide-react";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { VoiceParticipant } from "@/hooks/use-voice";
-import type { Collaborator, SocketId } from "@excalidraw/excalidraw/types";
 
 interface VoiceControlsProps {
-  collaborators: Map<SocketId, Collaborator>;
   participants: VoiceParticipant[];
   localMuted: boolean;
-  toggleMute: () => void;
-  joinCall: () => void;
-  leaveCall: () => void;
+  deafened: boolean;
+  toggleTalk: () => void;
+  toggleListen: () => void;
   inCall: boolean;
   callFullError: boolean;
   remoteStreams: Map<string, MediaStream>;
   localStream: MediaStream | null;
-  failedPeers: Set<string>;
 }
 
 // Purely local rendering — no signaling involved. Polls amplitude on an
-// animation frame for a given MediaStream (local or remote), used to
-// highlight whoever's currently speaking in the participant list.
+// animation frame for the local mic stream, used to ring the talk button
+// while the user is actually speaking (a disabled/muted track just reads as
+// silence, so this doubles as a "your mic is live" cue for free).
 function useIsSpeaking(stream: MediaStream | null): boolean {
   const [speaking, setSpeaking] = useState(false);
 
@@ -59,65 +56,41 @@ function useIsSpeaking(stream: MediaStream | null): boolean {
   return speaking;
 }
 
-function ParticipantRow({
-  name,
-  muted,
-  stream,
-  failed,
-}: {
-  name: string;
-  muted: boolean;
-  stream: MediaStream | null;
-  failed: boolean;
-}) {
-  const speaking = useIsSpeaking(stream);
-
-  return (
-    <div className="flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className={speaking ? "font-medium text-primary" : ""}>{name}</span>
-        {muted ? (
-          <MicOff className="size-3.5 text-muted-foreground" />
-        ) : (
-          <Mic className="size-3.5 text-muted-foreground" />
-        )}
-      </div>
-      {failed && <span className="text-xs text-destructive">Couldn&apos;t connect to {name}</span>}
-    </div>
-  );
-}
-
+// Game-style voice chat: no explicit "join call" step and no participant
+// popover — pressing either button implicitly joins (see useVoice's
+// toggleTalk/toggleListen), and each button only ever controls its own
+// half of the call afterwards (mic = send, speaker = receive).
+//
 // Call state (useVoice) is owned by the parent, not this component: the
 // editor header remounts VoiceControls whenever the desktop/mobile Sheet
 // boundary flips (see file-editor.tsx's isDesktop ternary), and useVoice's
 // unmount cleanup calls leaveCall() -- if this component owned that hook,
 // resizing the browser mid-call would silently hang up on the user.
 export function VoiceControls({
-  collaborators,
   participants,
   localMuted,
-  toggleMute,
-  joinCall,
-  leaveCall,
+  deafened,
+  toggleTalk,
+  toggleListen,
   inCall,
   callFullError,
   remoteStreams,
   localStream,
-  failedPeers,
 }: VoiceControlsProps) {
-  function resolveName(socketId: string): string {
-    return collaborators.get(socketId as SocketId)?.username ?? "Someone";
-  }
+  const talking = inCall && !localMuted;
+  const listening = inCall && !deafened;
+  const speaking = useIsSpeaking(talking ? localStream : null);
 
   return (
-    <>
-      {/* Remote audio playback, rendered unconditionally (NOT inside
-          PopoverContent) so audio keeps playing while the popover is
-          closed — PopoverContent unmounts its children when closed. */}
+    <div className="flex items-center gap-1">
+      {/* Remote audio playback, always mounted (not gated on `listening`)
+          so streams don't glitch on re-render — the "listen" toggle just
+          mutes the element, it doesn't tear anything down. */}
       {Array.from(remoteStreams.entries()).map(([socketId, stream]) => (
         <audio
           key={socketId}
           autoPlay
+          muted={!listening}
           ref={(el) => {
             // VoiceControls re-renders often (collaborators changes on
             // every mouse-move-driven presence update) — only reassign
@@ -128,47 +101,37 @@ export function VoiceControls({
           }}
         />
       ))}
-      <Popover>
-        <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-          {inCall ? <Users className="size-4" /> : <Mic className="size-4" />}
-          {inCall ? `Voice (${participants.length + 1})` : "Join voice"}
-        </PopoverTrigger>
-        <PopoverContent>
-          {callFullError && (
-            <p className="px-2 py-1 text-sm text-destructive">
-              This call is full (6 participants max).
-            </p>
-          )}
-          {!inCall ? (
-            <Button size="sm" className="w-full" onClick={() => void joinCall()}>
-              Join voice call
-            </Button>
-          ) : (
-            <>
-              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-                <ParticipantRow name="You" muted={localMuted} stream={localStream} failed={false} />
-                {participants.map((p) => (
-                  <ParticipantRow
-                    key={p.socketId}
-                    name={resolveName(p.socketId)}
-                    muted={p.muted}
-                    stream={remoteStreams.get(p.socketId) ?? null}
-                    failed={failedPeers.has(p.socketId)}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 flex gap-2 border-t pt-2">
-                <Button variant="outline" size="sm" className="flex-1" onClick={toggleMute}>
-                  {localMuted ? "Unmute" : "Mute"}
-                </Button>
-                <Button variant="destructive" size="sm" className="flex-1" onClick={leaveCall}>
-                  Leave
-                </Button>
-              </div>
-            </>
-          )}
-        </PopoverContent>
-      </Popover>
-    </>
+
+      <Button
+        type="button"
+        variant={talking ? "default" : "outline"}
+        size="icon"
+        aria-label={talking ? "Mute microphone" : "Talk"}
+        aria-pressed={talking}
+        title={talking ? "Mute microphone" : "Talk"}
+        onClick={toggleTalk}
+        className={speaking ? "ring-2 ring-primary" : undefined}
+      >
+        {talking ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+      </Button>
+
+      <Button
+        type="button"
+        variant={listening ? "default" : "outline"}
+        size="icon"
+        aria-label={listening ? "Stop listening" : "Listen"}
+        aria-pressed={listening}
+        title={listening ? "Stop listening" : "Listen"}
+        onClick={toggleListen}
+      >
+        {listening ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+      </Button>
+
+      {inCall && participants.length > 0 && (
+        <span className="text-xs text-muted-foreground">{participants.length + 1} in call</span>
+      )}
+
+      {callFullError && <span className="text-xs text-destructive">Call full (6 max)</span>}
+    </div>
   );
 }

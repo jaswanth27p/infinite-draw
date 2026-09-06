@@ -17,21 +17,23 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { FileSocketProvider } from "@/hooks/file-socket-context";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { ShareDialog } from "@/components/share-dialog";
-import { ModifySelectionDialog } from "@/components/modify-selection-dialog";
-import { AiDialogTrigger } from "@/components/ai-dialog-trigger";
-import { useAiDiagram } from "@/hooks/use-ai-diagram";
+// AI features disabled (product going free/no-AI) — kept for later re-enable.
+// import { ModifySelectionDialog } from "@/components/modify-selection-dialog";
+// import { AiDialogTrigger } from "@/components/ai-dialog-trigger";
+// import { useAiDiagram } from "@/hooks/use-ai-diagram";
 import { ChatPanel } from "@/components/chat-panel";
 import { VoiceControls } from "@/components/voice-controls";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FileEditorSkeleton } from "@/components/file-editor-skeleton";
 import { NotificationBell } from "@/components/notification-bell";
-import { CreditsBalance } from "@/components/credits-balance";
+// import { CreditsBalance } from "@/components/credits-balance";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
-import { CaptureUpdateAction, getSceneVersion, MainMenu, TTDDialog, useHandleLibrary } from "@excalidraw/excalidraw";
+// TTDDialog (AI text-to-diagram) disabled along with the rest of the AI tools.
+import { CaptureUpdateAction, getSceneVersion, MainMenu, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -127,9 +129,9 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   const isDesktop = useMediaQuery("(min-width: 640px)");
   const [remountKey, setRemountKey] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
+  // const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const { generateMermaid } = useAiDiagram(fileId);
+  // const { generateMermaid } = useAiDiagram(fileId);
   const [liveElements, setLiveElements] = useState<readonly ExcalidrawElement[] | null>(null);
   const excalidrawApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   // Mirrors excalidrawApiRef into state so components rendered from JSX
@@ -198,17 +200,17 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   // no-ops internally until excalidrawApi is non-null).
   useHandleLibrary({ excalidrawAPI: excalidrawApi });
 
-  async function handleTtdTextSubmit(prompt: string) {
-    try {
-      const mermaid = await generateMermaid(prompt);
-      return { generatedResponse: mermaid };
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 402) {
-        return { error: new Error("Not enough credits — top up from the credits balance in the sidebar.") };
-      }
-      return { error: err instanceof Error ? err : new Error("Generation failed — try again.") };
-    }
-  }
+  // async function handleTtdTextSubmit(prompt: string) {
+  //   try {
+  //     const mermaid = await generateMermaid(prompt);
+  //     return { generatedResponse: mermaid };
+  //   } catch (err) {
+  //     if (err instanceof ApiError && err.status === 402) {
+  //       return { error: new Error("Not enough credits — top up from the credits balance in the sidebar.") };
+  //     }
+  //     return { error: err instanceof Error ? err : new Error("Generation failed — try again.") };
+  //   }
+  // }
 
   if (isLoading) {
     return <FileEditorSkeleton />;
@@ -266,14 +268,14 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         }}
         excalidrawApi={excalidrawApi}
       />
-      {canEdit && (
+      {/* {canEdit && (
         <ModifySelectionDialog
           fileId={fileId}
           excalidrawApi={excalidrawApi}
           open={modifyDialogOpen}
           onOpenChange={setModifyDialogOpen}
         />
-      )}
+      )} */}
       <Button
         variant="outline"
         size="sm"
@@ -283,10 +285,10 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         <MessageCircle className="size-4" />
         Chat
       </Button>
-      <VoiceControls collaborators={collaborators} {...voice} />
+      <VoiceControls {...voice} />
       <div className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
       <ThemeToggle />
-      <CreditsBalance />
+      {/* <CreditsBalance /> */}
       <NotificationBell />
       <UserButton />
     </>
@@ -399,9 +401,9 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             <MainMenu.DefaultItems.ClearCanvas />
             <MainMenu.DefaultItems.Help />
           </MainMenu>
-          {canEdit && <TTDDialog onTextSubmit={handleTtdTextSubmit} />}
+          {/* {canEdit && <TTDDialog onTextSubmit={handleTtdTextSubmit} />} */}
         </Excalidraw>
-        {canEdit && (
+        {/* {canEdit && (
           <AiDialogTrigger
             containerRef={canvasWrapperRef}
             onGenerateDiagram={() => {
@@ -411,7 +413,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             }}
             onModifySelection={() => setModifyDialogOpen(true)}
           />
-        )}
+        )} */}
         <ChatPanel
           fileId={fileId}
           owner={data!.owner}

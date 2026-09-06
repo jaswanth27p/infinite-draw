@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
-import { CreditsBalance } from "@/components/credits-balance";
+// Credits UI disabled (product going free/no-AI) — kept for later re-enable.
+// import { CreditsBalance } from "@/components/credits-balance";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +88,7 @@ function SidebarContent({
                 <NotificationBell mobile />
               </div>
             </div>
-            <CreditsBalance />
+            {/* <CreditsBalance /> */}
           </div>
         )}
       </div>

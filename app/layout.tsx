@@ -21,8 +21,7 @@ export const metadata: Metadata = {
     default: "infinite-draw",
     template: "%s · infinite-draw",
   },
-  description:
-    "A real-time collaborative whiteboard — draw, chat, and generate diagrams with AI, together.",
+  description: "A real-time collaborative whiteboard — draw, chat, and talk, together.",
   applicationName: "infinite-draw",
 };
 

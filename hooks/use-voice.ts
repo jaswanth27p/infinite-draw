@@ -29,6 +29,10 @@ export function useVoice(fileId: string) {
 
   const [inCall, setInCall] = useState(false);
   const [localMuted, setLocalMuted] = useState(false);
+  // Local-only "deafen" toggle — mutes remote playback for this client
+  // without telling the server or peers anything. Independent of
+  // localMuted: you can talk without listening, or listen without talking.
+  const [deafened, setDeafened] = useState(false);
   const [callFullError, setCallFullError] = useState(false);
   const [participants, setParticipants] = useState<VoiceParticipant[]>([]);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -280,13 +284,15 @@ export function useVoice(fileId: string) {
     setParticipants([]);
     setInCall(false);
     setLocalMuted(false);
+    setDeafened(false);
   }, [fileId, socket, closePeer]);
 
-  const joinCall = useCallback(async () => {
+  const joinCall = useCallback(async (options?: { startMuted?: boolean }) => {
     // Guard against re-entry: either already in a call, or a previous
     // joinCall() is still awaiting its ack.
     if (inCallRef.current || joinInFlightRef.current) return;
     joinInFlightRef.current = true;
+    const startMuted = options?.startMuted ?? false;
 
     setCallFullError(false);
     let stream: MediaStream;
@@ -297,8 +303,18 @@ export function useVoice(fileId: string) {
       joinInFlightRef.current = false;
       return;
     }
+    // Listen-only join (speaker button, mic never turned on): the peer
+    // connection still needs a local track to negotiate the audio m-line
+    // (createPeerConnection refuses to run without one), so we still grab
+    // the mic here — it's just disabled from the start.
+    if (startMuted) {
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+    }
     localStreamRef.current = stream;
     setLocalStream(stream);
+    setLocalMuted(startMuted);
 
     // Fetch (and cache) TURN credentials up front so the first
     // voice-user-joined we receive can create a peer connection without
@@ -312,6 +328,7 @@ export function useVoice(fileId: string) {
       stream.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
       setLocalStream(null);
+      setLocalMuted(false);
       return;
     }
 
@@ -328,10 +345,16 @@ export function useVoice(fileId: string) {
         stream.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
         setLocalStream(null);
+        setLocalMuted(false);
         return;
       }
       setParticipants(ack.participants.map((socketId) => ({ socketId, muted: false })));
       setInCall(true);
+      // Tell existing participants we joined already muted, so their
+      // participant list reflects it instead of assuming unmuted.
+      if (startMuted) {
+        socket.emit("voice-mute-changed", { fileId, muted: true });
+      }
       // Per the no-glare rule, the newcomer never initiates — existing
       // participants will each send an offer once they see this join via
       // voice-user-joined.
@@ -348,6 +371,31 @@ export function useVoice(fileId: string) {
     setLocalMuted(nextMuted);
     socket?.emit("voice-mute-changed", { fileId, muted: nextMuted });
   }, [fileId, socket, localMuted]);
+
+  // Local-only — doesn't touch the mic track or tell peers anything, just
+  // flips whether VoiceControls plays remote audio back to this client.
+  const toggleDeafen = useCallback(() => {
+    setDeafened((d) => !d);
+  }, []);
+
+  // Two-button "talk"/"listen" model (mic + speaker), no separate join/leave
+  // step: the first press of either button joins the call implicitly, and
+  // each button only ever touches its own half of the call afterwards.
+  const toggleTalk = useCallback(() => {
+    if (!inCallRef.current) {
+      void joinCall();
+      return;
+    }
+    toggleMute();
+  }, [joinCall, toggleMute]);
+
+  const toggleListen = useCallback(() => {
+    if (!inCallRef.current) {
+      void joinCall({ startMuted: true });
+      return;
+    }
+    toggleDeafen();
+  }, [joinCall, toggleDeafen]);
 
   const leaveCallRef = useRef(leaveCall);
   // eslint-disable-next-line react-hooks/refs
@@ -370,7 +418,11 @@ export function useVoice(fileId: string) {
   return {
     participants,
     localMuted,
+    deafened,
     toggleMute,
+    toggleDeafen,
+    toggleTalk,
+    toggleListen,
     joinCall,
     leaveCall,
     inCall,
