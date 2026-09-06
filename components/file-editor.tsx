@@ -313,8 +313,8 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         appearance={{
           elements: {
             rootBox: "w-full",
-            userButtonBox: "w-full max-w-full flex-row justify-start gap-2 px-2.5 py-1.5",
-            userButtonOuterIdentifier: "truncate pl-0",
+            userButtonBox: "w-full max-w-full flex-row-reverse justify-start gap-2 px-2.5 py-1.5",
+            userButtonOuterIdentifier: "truncate pl-0 text-left",
           },
         }}
       />
