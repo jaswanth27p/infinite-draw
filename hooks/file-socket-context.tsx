@@ -12,6 +12,23 @@ import {
 import { io, type Socket } from "socket.io-client";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+const CLIENT_SESSION_ID_KEY = "infinite-draw-client-session-id";
+
+// Stable per-tab id, not per-user: two tabs (or two devices) for the same
+// account are legitimate simultaneous collaborators and must keep separate
+// presence. sessionStorage (not localStorage) is what makes it per-tab —
+// it's what lets the server tell "this tab reconnected with a new
+// socket.id" (evict the stale one immediately, see collab.gateway.ts's
+// join-room handler) apart from "a second tab/device joined" (keep both).
+function getClientSessionId(): string {
+  if (typeof window === "undefined") return crypto.randomUUID();
+  let id = sessionStorage.getItem(CLIENT_SESSION_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(CLIENT_SESSION_ID_KEY, id);
+  }
+  return id;
+}
 
 interface FileSocketContextValue {
   socket: Socket | null;
@@ -53,11 +70,12 @@ export function FileSocketProvider({
     // (~60s); with a static `{ token }` object, every auto-reconnect
     // after the first ~60s would replay the original (by then expired)
     // token and get rejected by the server's auth guard.
+    const clientSessionId = getClientSessionId();
     const s = io(WS_URL, {
       auth: (cb) => {
         getTokenRef.current().then(
-          (token) => cb({ token }),
-          () => cb({ token: null }),
+          (token) => cb({ token, clientSessionId }),
+          () => cb({ token: null, clientSessionId }),
         );
       },
     });

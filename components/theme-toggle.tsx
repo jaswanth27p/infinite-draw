@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function ThemeToggle() {
+export function ThemeToggle({ showLabel = false }: { showLabel?: boolean } = {}) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -14,7 +14,7 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="size-8" aria-hidden />;
+    return <div className={showLabel ? "h-8 w-full" : "size-8"} aria-hidden />;
   }
 
   // Always toggle off the *resolved* (actually-applied) theme, not the raw
@@ -23,6 +23,22 @@ export function ThemeToggle() {
   // would otherwise set theme="dark" while it's already rendering dark,
   // making the button appear to do nothing.
   const next = resolvedTheme === "dark" ? "light" : "dark";
+  const Icon = resolvedTheme === "dark" ? Sun : Moon;
+
+  if (showLabel) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full justify-start gap-2"
+        onClick={() => setTheme(next)}
+        aria-label={`Switch to ${next} mode`}
+      >
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate">{resolvedTheme === "dark" ? "Dark mode" : "Light mode"}</span>
+      </Button>
+    );
+  }
 
   return (
     <Button
@@ -32,7 +48,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} mode`}
     >
-      {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      <Icon className="size-4" />
     </Button>
   );
 }

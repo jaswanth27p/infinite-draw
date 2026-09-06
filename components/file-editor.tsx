@@ -286,12 +286,39 @@ function FileEditorContent({ fileId }: { fileId: string }) {
         Chat
       </Button>
       <VoiceControls {...voice} />
-      <div className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+    </>
+  );
+
+  // Rendered once per branch (desktop inline row vs. mobile Sheet column) --
+  // unlike editorControls above these hold no live media, so mounting a
+  // second copy per layout is safe and lets each pick its own icon/label
+  // arrangement.
+  const desktopAccountControls = (
+    <div className="flex items-center gap-2">
+      <div className="mx-1 h-5 w-px bg-border" aria-hidden />
       <ThemeToggle />
       {/* <CreditsBalance /> */}
       <NotificationBell />
       <UserButton />
-    </>
+    </div>
+  );
+
+  const mobileAccountControls = (
+    <div className="flex flex-col gap-1 border-t border-border pt-3">
+      <ThemeToggle showLabel />
+      {/* <CreditsBalance /> */}
+      <NotificationBell showLabel />
+      <UserButton
+        showName
+        appearance={{
+          elements: {
+            rootBox: "w-full",
+            userButtonBox: "w-full max-w-full flex-row justify-start gap-2 px-2.5 py-1.5",
+            userButtonOuterIdentifier: "truncate pl-0",
+          },
+        }}
+      />
+    </div>
   );
 
   return (
@@ -311,7 +338,10 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             </>
           )}
           {isDesktop ? (
-            <div className="flex items-center gap-2">{editorControls}</div>
+            <div className="flex items-center gap-2">
+              {editorControls}
+              {desktopAccountControls}
+            </div>
           ) : (
             <Sheet>
               <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="More options" />}>
@@ -321,7 +351,10 @@ function FileEditorContent({ fileId }: { fileId: string }) {
                 <SheetHeader>
                   <SheetTitle className="sr-only">Editor options</SheetTitle>
                 </SheetHeader>
-                <div className="flex flex-col gap-3 p-4">{editorControls}</div>
+                <div className="flex flex-col gap-3 p-4">
+                  {editorControls}
+                  {mobileAccountControls}
+                </div>
               </SheetContent>
             </Sheet>
           )}

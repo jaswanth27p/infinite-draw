@@ -80,14 +80,19 @@ function SidebarContent({
           collapsed={collapsed}
         />
         {showAccountControls && (
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <div className="flex items-center justify-between">
-              <UserButton showName />
-              <div className="flex items-center gap-1">
-                <ThemeToggle />
-                <NotificationBell mobile />
-              </div>
-            </div>
+          <div className="flex flex-col gap-1 border-t border-border pt-4">
+            <ThemeToggle showLabel />
+            <NotificationBell mobile showLabel />
+            <UserButton
+              showName
+              appearance={{
+                elements: {
+                  rootBox: "w-full",
+                  userButtonBox: "w-full max-w-full flex-row justify-start gap-2 px-2.5 py-1.5",
+                  userButtonOuterIdentifier: "truncate pl-0",
+                },
+              }}
+            />
             {/* <CreditsBalance /> */}
           </div>
         )}

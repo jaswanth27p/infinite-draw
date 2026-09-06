@@ -11,33 +11,69 @@ import { describeNotification } from "@/lib/notification-text";
 // topbar -- a Popover nested inside the drawer's Sheet is awkward to open
 // and gets clipped, so `mobile` swaps it for a plain link to a dedicated
 // /notifications page instead of the dropdown.
-export function NotificationBell({ mobile = false }: { mobile?: boolean } = {}) {
+export function NotificationBell({
+  mobile = false,
+  showLabel = false,
+}: { mobile?: boolean; showLabel?: boolean } = {}) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   if (mobile) {
     return (
-      <Button variant="ghost" size="icon" className="relative" render={<Link href="/notifications" />}>
-        <Bell />
-        {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+      <Button
+        variant="ghost"
+        size={showLabel ? undefined : "icon"}
+        className={showLabel ? "relative w-full justify-start gap-2" : "relative"}
+        render={<Link href="/notifications" />}
+      >
+        <Bell className="size-4 shrink-0" />
+        {showLabel ? (
+          <>
+            <span className="truncate">Notifications</span>
+            {unreadCount > 0 && (
+              <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+            <span className="sr-only">Notifications</span>
+          </>
         )}
-        <span className="sr-only">Notifications</span>
       </Button>
     );
   }
 
   return (
     <Popover>
-      <PopoverTrigger render={<Button variant="ghost" size="icon-sm" className="relative" />}>
-        <Bell />
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            size={showLabel ? undefined : "icon-sm"}
+            className={showLabel ? "relative w-full justify-start gap-2" : "relative"}
+          />
+        }
+      >
+        <Bell className="size-4 shrink-0" />
+        {showLabel && <span className="truncate">Notifications</span>}
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+          <span
+            className={
+              showLabel
+                ? "ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground"
+                : "absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground"
+            }
+          >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
-        <span className="sr-only">Notifications</span>
+        {!showLabel && <span className="sr-only">Notifications</span>}
       </PopoverTrigger>
       <PopoverContent>
         <div className="flex items-center justify-between px-2 py-1">
