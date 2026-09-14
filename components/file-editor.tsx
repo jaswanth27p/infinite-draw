@@ -163,6 +163,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
     ownMessageIds,
     hasMoreMessages,
     isLoadingOlderMessages,
+    canChat,
     sendChatMessage,
     loadOlderMessages,
   } = useCollab(fileId, data?.role ?? "VIEWER", handleRemoteSceneUpdate, getLiveAppState);
@@ -448,6 +449,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
           ownMessageIds={ownMessageIds}
           hasMoreMessages={hasMoreMessages}
           isLoadingOlderMessages={isLoadingOlderMessages}
+          canChat={canChat}
           onSend={sendChatMessage}
           onLoadOlder={loadOlderMessages}
           open={chatOpen}

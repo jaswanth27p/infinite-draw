@@ -34,6 +34,7 @@ export function useVoice(fileId: string) {
   // localMuted: you can talk without listening, or listen without talking.
   const [deafened, setDeafened] = useState(false);
   const [callFullError, setCallFullError] = useState(false);
+  const [noAccessError, setNoAccessError] = useState(false);
   const [participants, setParticipants] = useState<VoiceParticipant[]>([]);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -295,6 +296,7 @@ export function useVoice(fileId: string) {
     const startMuted = options?.startMuted ?? false;
 
     setCallFullError(false);
+    setNoAccessError(false);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -341,7 +343,10 @@ export function useVoice(fileId: string) {
       joinInFlightRef.current = false;
       if (!ack.joined) {
         inCallRef.current = false;
+        // Both reasons are mutually exclusive per join attempt, so a fresh
+        // join always clears whichever one was showing before.
         setCallFullError(ack.reason === "full");
+        setNoAccessError(ack.reason === "no-access");
         stream.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
         setLocalStream(null);
@@ -427,6 +432,7 @@ export function useVoice(fileId: string) {
     leaveCall,
     inCall,
     callFullError,
+    noAccessError,
     remoteStreams,
     localStream,
     failedPeers,

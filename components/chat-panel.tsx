@@ -14,7 +14,11 @@ interface ChatPanelProps {
   ownMessageIds: Set<string>;
   hasMoreMessages: boolean;
   isLoadingOlderMessages: boolean;
-  onSend: (body: string, mentionedUserIds: string[]) => void;
+  canChat: boolean;
+  onSend: (
+    body: string,
+    mentionedUserIds: string[],
+  ) => Promise<{ ok: true } | { ok: false; reason: string }>;
   onLoadOlder: () => void;
   open: boolean;
   onClose: () => void;
@@ -31,6 +35,7 @@ export function ChatPanel({
   ownMessageIds,
   hasMoreMessages,
   isLoadingOlderMessages,
+  canChat,
   onSend,
   onLoadOlder,
   open,
@@ -54,6 +59,8 @@ export function ChatPanel({
   const [draft, setDraft] = useState("");
   const [mentioned, setMentioned] = useState<{ id: string; label: string }[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const mentionMatches =
@@ -83,7 +90,8 @@ export function ChatPanel({
     inputRef.current?.focus();
   }
 
-  function handleSend() {
+  async function handleSend() {
+    if (!canChat) return;
     const trimmed = draft.trim();
     if (!trimmed) return;
     // Only ids whose "@Label" text is still actually present in the final
@@ -91,7 +99,20 @@ export function ChatPanel({
     // should not signal intent to notify that person. (The server
     // re-validates access regardless of what's sent here.)
     const stillPresent = mentioned.filter((m) => trimmed.includes(`@${m.label}`)).map((m) => m.id);
-    onSend(trimmed, stillPresent);
+    setSending(true);
+    const result = await onSend(trimmed, stillPresent);
+    setSending(false);
+    if (!result.ok) {
+      // Keep the draft so nothing typed is lost, and tell the user why it
+      // didn't go out instead of clearing the input as if it had sent.
+      setSendError(
+        result.reason === "no-access"
+          ? "You don't have permission to send messages in this file."
+          : "Message failed to send — try again.",
+      );
+      return;
+    }
+    setSendError(null);
     setDraft("");
     setMentioned([]);
     setMentionQuery(null);
@@ -138,26 +159,35 @@ export function ChatPanel({
           ))}
         </div>
 
-        <div className="relative flex items-center gap-2 border-t p-4">
-          <Input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => handleDraftChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-              if (e.key === "Escape") {
-                setMentionQuery(null);
-              }
-            }}
-            placeholder="Message… (@ to mention)"
-            maxLength={4000}
-          />
-          <Button onClick={handleSend} disabled={!draft.trim()}>
-            Send
-          </Button>
+        <div className="relative flex flex-col gap-1 border-t p-4">
+          {!canChat && (
+            <p className="text-xs text-muted-foreground">
+              You have view-only access to this file, so you can&apos;t send messages here.
+            </p>
+          )}
+          {canChat && sendError && <p className="text-xs text-destructive">{sendError}</p>}
+          <div className="flex items-center gap-2">
+            <Input
+              ref={inputRef}
+              value={draft}
+              disabled={!canChat}
+              onChange={(e) => handleDraftChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+                if (e.key === "Escape") {
+                  setMentionQuery(null);
+                }
+              }}
+              placeholder={canChat ? "Message… (@ to mention)" : "Chat unavailable"}
+              maxLength={4000}
+            />
+            <Button onClick={handleSend} disabled={!canChat || !draft.trim() || sending}>
+              {sending ? "Sending…" : "Send"}
+            </Button>
+          </div>
           {mentionQuery !== null && mentionMatches.length > 0 && (
             <div className="absolute bottom-full left-4 mb-1 flex max-h-40 w-56 flex-col overflow-y-auto rounded-lg border bg-popover p-1 shadow-md">
               {mentionMatches.map((c) => (

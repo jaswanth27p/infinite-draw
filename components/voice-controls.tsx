@@ -13,6 +13,7 @@ interface VoiceControlsProps {
   toggleListen: () => void;
   inCall: boolean;
   callFullError: boolean;
+  noAccessError: boolean;
   remoteStreams: Map<string, MediaStream>;
   localStream: MediaStream | null;
 }
@@ -74,6 +75,7 @@ export function VoiceControls({
   toggleListen,
   inCall,
   callFullError,
+  noAccessError,
   remoteStreams,
   localStream,
 }: VoiceControlsProps) {
@@ -132,6 +134,9 @@ export function VoiceControls({
       )}
 
       {callFullError && <span className="text-xs text-destructive">Call full (6 max)</span>}
+      {noAccessError && (
+        <span className="text-xs text-destructive">You don&apos;t have access to voice chat here</span>
+      )}
     </div>
   );
 }

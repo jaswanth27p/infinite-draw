@@ -33,6 +33,14 @@ interface MessagesPage {
   nextCursor: string | null;
 }
 
+type SendChatResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid" | "no-access" | "send-failed" | "disconnected" };
+
+type SendChatAck =
+  | { ok: true; message: ChatMessage }
+  | { ok: false; reason: "invalid" | "no-access" | "send-failed" };
+
 export function useCollab(
   fileId: string,
   role: Role,
@@ -287,14 +295,27 @@ export function useCollab(
   );
 
   const sendChatMessage = useCallback(
-    (body: string, mentionedUserIds: string[] = []) => {
-      // The gateway excludes the sender from the "chat-message" broadcast
-      // now (see collab.gateway.ts) — this ack is the sender's only
-      // delivery of their own message, so it has to add it to `messages`
-      // itself, not just tag it in `ownMessageIds`.
-      socket?.emit("send-chat-message", { fileId, body, mentionedUserIds }, (message: ChatMessage) => {
-        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [message, ...prev]));
-        setOwnMessageIds((prev) => new Set(prev).add(message.id));
+    (body: string, mentionedUserIds: string[] = []): Promise<SendChatResult> => {
+      return new Promise((resolve) => {
+        if (!socket) {
+          resolve({ ok: false, reason: "disconnected" });
+          return;
+        }
+        // The gateway excludes the sender from the "chat-message" broadcast
+        // now (see collab.gateway.ts) — this ack is the sender's only
+        // delivery of their own message, so it has to add it to `messages`
+        // itself, not just tag it in `ownMessageIds`. The ack also carries
+        // an explicit ok/reason so a rejected send (e.g. no chat access)
+        // can be surfaced to the sender instead of failing silently.
+        socket.emit("send-chat-message", { fileId, body, mentionedUserIds }, (ack: SendChatAck) => {
+          if (!ack?.ok) {
+            resolve({ ok: false, reason: ack?.reason ?? "send-failed" });
+            return;
+          }
+          setMessages((prev) => (prev.some((m) => m.id === ack.message.id) ? prev : [ack.message, ...prev]));
+          setOwnMessageIds((prev) => new Set(prev).add(ack.message.id));
+          resolve({ ok: true });
+        });
       });
     },
     [fileId, socket],
@@ -323,6 +344,10 @@ export function useCollab(
     messages,
     ownMessageIds,
     hasMoreMessages: nextCursor !== null,
+    // Mirrors the gateway's own 'COMMENTER' floor for send-chat-message —
+    // used to gate the chat input client-side so a VIEWER sees why they
+    // can't type instead of hitting a silently-rejected send.
+    canChat: role !== "VIEWER",
     sendChatMessage,
     loadOlderMessages,
     isLoadingOlderMessages: isLoadingOlder,
