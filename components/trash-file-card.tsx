@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { RotateCcw, Trash2 } from "lucide-react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImageOff, RotateCcw, Trash2 } from "lucide-react";
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useApiClient } from "@/lib/api-client";
+import { formatRelativeTime } from "@/lib/utils";
 
 interface TrashFileCardProps {
   file: { id: string; name: string; thumbnailUrl: string | null; thumbnailUrlDark: string | null; deletedAt: string };
@@ -73,25 +74,23 @@ export function TrashFileCard({ file }: TrashFileCardProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="truncate text-sm">{file.name}</CardTitle>
-        <p className="truncate text-xs text-muted-foreground">
-          Deleted {new Date(file.deletedAt).toLocaleDateString()}
-        </p>
-      </CardHeader>
-      <CardContent>
+    <Card className="overflow-hidden pt-0">
+      <div className="relative aspect-video w-full overflow-hidden rounded-t-xl">
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static/local asset
-          <img
-            src={thumbnail}
-            alt=""
-            className="aspect-video w-full rounded object-cover opacity-60"
-          />
+          <img src={thumbnail} alt="" className="size-full object-cover opacity-60" />
         ) : (
-          <div className="aspect-video w-full rounded bg-muted" />
+          <div className="flex size-full items-center justify-center bg-muted">
+            <ImageOff className="size-5 text-muted-foreground/40" />
+          </div>
         )}
-      </CardContent>
+      </div>
+      <CardHeader className="pt-3">
+        <CardTitle className="truncate text-sm">{file.name}</CardTitle>
+        <p className="truncate font-mono text-[11px] tabular-nums text-muted-foreground">
+          Deleted {formatRelativeTime(file.deletedAt)}
+        </p>
+      </CardHeader>
       <CardFooter className="flex-col items-stretch gap-2">
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex gap-2">
