@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IndianRupee } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -80,7 +81,10 @@ export function AddCreditsDialog({
           <DialogTitle>Add credits</DialogTitle>
         </DialogHeader>
 
-        <p className="text-sm text-muted-foreground">Current balance: ₹{balance}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Current balance</p>
+          <p className="font-mono text-2xl font-semibold">₹{balance}</p>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
           {PRESET_AMOUNTS.map((amount) => (
@@ -89,21 +93,29 @@ export function AddCreditsDialog({
               variant="outline"
               disabled={isStartingCheckout}
               onClick={() => void handlePay(amount)}
+              className="h-14 flex-col gap-1 hover:border-primary/40 hover:bg-accent"
             >
-              ₹{amount}
+              <IndianRupee className="size-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{amount}</span>
             </Button>
           ))}
         </div>
 
         <div className="flex items-center gap-2 border-t pt-4">
-          <Input
-            type="number"
-            min={MIN_AMOUNT}
-            step={1}
-            placeholder={`Custom amount (min ₹${MIN_AMOUNT})`}
-            value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
-          />
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
+              ₹
+            </span>
+            <Input
+              type="number"
+              min={MIN_AMOUNT}
+              step={1}
+              placeholder={`Min ${MIN_AMOUNT}`}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              className="pl-6"
+            />
+          </div>
           <Button disabled={isStartingCheckout || !customAmount} onClick={handleCustomPay}>
             Pay
           </Button>
