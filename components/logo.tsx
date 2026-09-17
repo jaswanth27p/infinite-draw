@@ -7,7 +7,7 @@ export function Logo({ iconOnly = false, className }: { iconOnly?: boolean; clas
       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <InfinityMark className="size-4" strokeWidth={2.5} />
       </span>
-      {!iconOnly && <span className="font-semibold tracking-tight">infinite-draw</span>}
+      {!iconOnly && <span className="font-heading font-semibold tracking-tight">infinite-draw</span>}
     </span>
   );
 }
