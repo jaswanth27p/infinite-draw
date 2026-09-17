@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { AlertCircle, Check, RotateCcw, Sparkles } from "lucide-react";
 import { exportToSvg } from "@excalidraw/excalidraw";
 import {
   Dialog,
@@ -149,7 +150,8 @@ export function ModifySelectionDialog({ fileId, excalidrawApi, open, onOpenChang
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex h-56 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Preview</p>
+        <div className="flex h-56 items-center justify-center overflow-hidden rounded-lg border-0 bg-muted/30 ring-1 ring-border">
           {isRenderingPreview ? (
             <span className="text-sm text-muted-foreground">Rendering preview…</span>
           ) : previewSvg ? (
@@ -162,24 +164,32 @@ export function ModifySelectionDialog({ fileId, excalidrawApi, open, onOpenChang
           )}
         </div>
 
-        <Input
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void handleGenerate();
-            }
-          }}
-          placeholder="e.g. make these boxes blue and align them in a row"
-          maxLength={2000}
-          disabled={isModifying || !hasSelection}
-          autoFocus
-        />
+        <div className="flex flex-col gap-1">
+          <div className="relative">
+            <Sparkles className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleGenerate();
+                }
+              }}
+              placeholder="e.g. make these boxes blue and align them in a row"
+              maxLength={2000}
+              disabled={isModifying || !hasSelection}
+              autoFocus
+              className="pl-8"
+            />
+          </div>
+          <p className="self-end font-mono text-xs text-muted-foreground">{prompt.length}/2000</p>
+        </div>
 
         {error?.kind === "generic" && <p className="text-sm text-destructive">{error.message}</p>}
         {error?.kind === "insufficient-credits" && (
-          <div className="flex items-center gap-2 text-sm text-destructive">
+          <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-2 text-sm text-destructive">
+            <AlertCircle className="size-4 shrink-0" />
             <span>Not enough credits.</span>
             <AddCreditsDialog
               balance={balance}
@@ -198,6 +208,7 @@ export function ModifySelectionDialog({ fileId, excalidrawApi, open, onOpenChang
           </Button>
           {previewElements && (
             <Button variant="outline" onClick={handleReset} disabled={isModifying}>
+              <RotateCcw />
               Reset
             </Button>
           )}
@@ -206,10 +217,12 @@ export function ModifySelectionDialog({ fileId, excalidrawApi, open, onOpenChang
             disabled={isModifying || !prompt.trim() || !hasSelection}
             variant={previewElements ? "outline" : "default"}
           >
+            <Sparkles />
             {isModifying ? "Generating…" : previewElements ? "Regenerate" : "Generate"}
           </Button>
           {previewElements && (
             <Button onClick={handleApply} disabled={isModifying}>
+              <Check />
               Apply
             </Button>
           )}
