@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Wand2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,11 +84,17 @@ export function AiDialogTrigger({ containerRef, onGenerateDiagram, onModifySelec
         <DropdownMenuTrigger
           render={<Button variant="outline" size="icon" aria-label="AI tools" />}
         >
-          <Sparkles className="size-4" />
+          <Sparkles className="size-4 text-primary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onGenerateDiagram}>Generate diagram</DropdownMenuItem>
-          <DropdownMenuItem onClick={onModifySelection}>Modify selection</DropdownMenuItem>
+          <DropdownMenuItem onClick={onGenerateDiagram}>
+            <Sparkles />
+            Generate diagram
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onModifySelection}>
+            <Wand2 />
+            Modify selection
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
