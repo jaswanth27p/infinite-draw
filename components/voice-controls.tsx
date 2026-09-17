@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { VoiceParticipant } from "@/hooks/use-voice";
 
 interface VoiceControlsProps {
@@ -112,7 +113,10 @@ export function VoiceControls({
         aria-pressed={talking}
         title={talking ? "Mute microphone" : "Talk"}
         onClick={toggleTalk}
-        className={speaking ? "ring-2 ring-primary" : undefined}
+        className={cn(
+          "transition-shadow duration-150",
+          speaking && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        )}
       >
         {talking ? <Mic className="size-4" /> : <MicOff className="size-4" />}
       </Button>
@@ -130,7 +134,9 @@ export function VoiceControls({
       </Button>
 
       {inCall && participants.length > 0 && (
-        <span className="text-xs text-muted-foreground">{participants.length + 1} in call</span>
+        <span className="text-xs text-muted-foreground">
+          <span className="font-mono">{participants.length + 1}</span> in call
+        </span>
       )}
 
       {callFullError && <span className="text-xs text-destructive">Call full (6 max)</span>}
