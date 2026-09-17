@@ -40,15 +40,21 @@ function NavLink({
       href={href}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors",
-        collapsed && "justify-center",
+        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-150",
+        collapsed && "justify-center px-0",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       )}
     >
-      <Icon className="size-4 shrink-0" />
-      {collapsed ? <span className="sr-only">{label}</span> : label}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
+        />
+      )}
+      <Icon className="size-4 shrink-0" strokeWidth={active ? 2.25 : 2} />
+      {collapsed ? <span className="sr-only">{label}</span> : <span className="truncate">{label}</span>}
     </Link>
   );
 }
@@ -63,11 +69,11 @@ function SidebarContent({
   const pathname = usePathname();
   const { user } = useUser();
   return (
-    <div className={cn("flex h-full flex-col gap-6 p-4", collapsed ? "w-14" : "w-64")}>
+    <div className={cn("flex flex-1 min-h-0 flex-col gap-5 overflow-y-auto p-4", collapsed ? "w-16" : "w-64")}>
       <Link href="/home" className={cn("flex", collapsed ? "justify-center" : "px-2")}>
         <Logo iconOnly={collapsed} />
       </Link>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} {...item} active={pathname === item.href} collapsed={collapsed} />
         ))}
@@ -97,41 +103,43 @@ function SidebarContent({
 }
 
 export function DashboardSidebar() {
-  const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useSidebarCollapsed();
 
   return (
-    <>
-      <div className="relative hidden border-r border-border sm:block">
-        <div className={cn("flex h-full flex-col", collapsed ? "w-14" : "w-64")}>
-          <SidebarContent collapsed={collapsed} />
+    <div className="hidden shrink-0 border-r border-border sm:block">
+      <div className={cn("flex h-full flex-col", collapsed ? "w-16" : "w-64")}>
+        <SidebarContent collapsed={collapsed} />
+        <div className="border-t border-sidebar-border p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-full gap-2 text-muted-foreground", collapsed ? "justify-center px-0" : "justify-start")}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+            {!collapsed && <span className="text-xs">Collapse</span>}
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute -right-3 top-16 z-10 size-6 rounded-full border-border bg-background p-0 shadow-sm"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? <ChevronRight className="size-3" /> : <ChevronLeft className="size-3" />}
-        </Button>
       </div>
-      <div className="flex items-center justify-between border-b border-border p-3 sm:hidden">
-        <Link href="/home">
-          <Logo />
-        </Link>
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
-            <Menu className="size-4" />
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0">
-            <SheetHeader className="sr-only">
-              <SheetTitle>Navigation</SheetTitle>
-            </SheetHeader>
-            <SidebarContent collapsed={false} showAccountControls />
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+    </div>
+  );
+}
+
+export function MobileSidebarTrigger() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
+        <Menu className="size-4" />
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Navigation</SheetTitle>
+        </SheetHeader>
+        <SidebarContent collapsed={false} showAccountControls />
+      </SheetContent>
+    </Sheet>
   );
 }
