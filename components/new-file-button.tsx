@@ -22,7 +22,7 @@ export function NewFileButton() {
   }
 
   return (
-    <Button onClick={handleClick} disabled={pending} className="w-full">
+    <Button onClick={handleClick} disabled={pending} size="lg" className="w-full">
       <Plus className="size-4" />
       {pending ? "Creating…" : "New file"}
     </Button>

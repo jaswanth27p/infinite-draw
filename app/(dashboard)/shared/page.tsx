@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { VirtualizedFileList } from "@/components/virtualized-file-list";
 import { FileCard } from "@/components/file-card";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,15 @@ export default function SharedPage() {
         renderCard={(file, view) => <FileCard file={file} view={view} />}
         toolbar={
           <div className="flex items-center gap-2">
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search shared files…"
-              className="max-w-xs"
-            />
+            <div className="relative max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search shared files…"
+                className="pl-8"
+              />
+            </div>
             <Select
               value={role ?? "ALL"}
               onValueChange={(value) => setRole(value === "ALL" ? undefined : (value as "VIEWER" | "COMMENTER" | "EDITOR"))}

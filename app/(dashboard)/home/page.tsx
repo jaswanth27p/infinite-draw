@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
-import { FileText, Star, Users } from "lucide-react";
+import { ChevronRight, FileText, Star, Users } from "lucide-react";
 import { apiFetchServer } from "@/lib/api-server";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -28,7 +28,7 @@ async function WelcomeSection() {
         <p className="text-sm text-muted-foreground">
           {getGreeting()}, {name}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">Ready to create something?</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">Ready to create something?</h1>
       </div>
       <div className="w-48">
         <NewFileButton />
@@ -40,9 +40,10 @@ async function WelcomeSection() {
 function SectionHeader({ title, viewAllHref }: { title: string; viewAllHref: string }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      <Link href={viewAllHref} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-        View all
+      <h2 className="font-heading text-lg font-semibold tracking-tight">{title}</h2>
+      <Link href={viewAllHref} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1")}>
+        {"View all"}
+        <ChevronRight className="size-3.5" />
       </Link>
     </div>
   );

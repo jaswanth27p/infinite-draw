@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { VirtualizedFileList } from "@/components/virtualized-file-list";
 import { TrashFileCard } from "@/components/trash-file-card";
 import { Input } from "@/components/ui/input";
@@ -22,12 +22,15 @@ export default function TrashPage() {
         renderCard={(file) => <TrashFileCard file={file} />}
         showViewToggle={false}
         toolbar={
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search trash…"
-            className="max-w-xs"
-          />
+          <div className="relative max-w-xs">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search trash…"
+              className="pl-8"
+            />
+          </div>
         }
       />
     </main>

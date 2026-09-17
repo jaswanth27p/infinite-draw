@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { VirtualizedFileList } from "@/components/virtualized-file-list";
 import { FileCard } from "@/components/file-card";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,15 @@ export default function RecentPage() {
         errorMessage="Couldn't load recent files"
         renderCard={(file, view) => <FileCard file={file} view={view} />}
         toolbar={
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recent files…"
-            className="max-w-xs"
-          />
+          <div className="relative max-w-xs">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search recent files…"
+              className="pl-8"
+            />
+          </div>
         }
       />
     </main>

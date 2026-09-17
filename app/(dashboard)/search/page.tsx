@@ -14,7 +14,7 @@ export default function SearchPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">
         {q ? `Search results for "${q}"` : "Search"}
       </h1>
       {q.length === 0 ? (
