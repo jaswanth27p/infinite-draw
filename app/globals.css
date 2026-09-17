@@ -164,17 +164,28 @@
  * blue accent / neutral scale / font / radius instead of its stock violet
  * default (`--color-primary: #6965db`), so the canvas chrome and the
  * surrounding dashboard read as one system. Values are Excalidraw's own
- * default lightness/chroma per swatch, hue-rotated to 262 (light) / 255
+ * default lightness/chroma per swatch, hue-rotated to 262 (light) / 254
  * (dark) to match `--primary`'s hue in globals.css's :root/.dark blocks
  * above — same "rotate hue, keep L/C" technique used for the app's own
  * neutrals, so every relative contrast relationship Excalidraw already
  * tuned (hover states, container/text pairs) survives unchanged.
+ *
+ * Selectors below double up each class (`.excalidraw.excalidraw`,
+ * `.excalidraw-tooltip.excalidraw-tooltip`) purely to raise specificity:
+ * Excalidraw's own stylesheet declares these same custom properties on
+ * `.excalidraw` / `.excalidraw.theme--dark` at identical specificity, and
+ * since its chunk loads after this file on the file editor route, an
+ * unweighted tie goes to Excalidraw's own rule and this whole block is
+ * dead code. Doubling a class doesn't change what it matches — it's still
+ * the same single real element — it only adds a specificity point, same
+ * trick as `!important` on the `.HelpDialog__header` rule above but
+ * without the heavier hammer.
  */
-.excalidraw,
-.excalidraw .excalidraw-tooltip {
+.excalidraw.excalidraw,
+.excalidraw-tooltip.excalidraw-tooltip {
   --ui-font: var(--font-sans);
 }
-.excalidraw {
+.excalidraw.excalidraw {
   --border-radius-md: var(--radius-md);
   --border-radius-lg: var(--radius-lg);
   --color-selection: oklch(57.2% 0.175 262);
@@ -205,20 +216,20 @@
   --color-gray-100: oklch(18.2% 0.004 262);
 }
 
-.excalidraw.theme--dark {
-  --color-selection: oklch(43.1% 0.218 255);
-  --color-primary: oklch(76.0% 0.128 255);
-  --color-primary-darker: oklch(78.5% 0.114 255);
-  --color-primary-darkest: oklch(81.5% 0.098 255);
-  --color-primary-light: oklch(43.6% 0.056 255);
-  --color-primary-light-darker: oklch(39.0% 0.049 255);
-  --color-primary-hover: oklch(81.1% 0.100 255);
-  --color-brand-hover: oklch(81.1% 0.100 255);
-  --color-brand-active: oklch(86.5% 0.070 255);
-  --color-on-primary-container: oklch(91.4% 0.043 255);
-  --color-surface-primary-container: oklch(38.7% 0.074 255);
-  --color-on-surface: oklch(91.7% 0.007 255);
-  --color-surface-high: oklch(31.5% 0.019 255);
-  --color-surface-low: oklch(26.0% 0.011 255);
-  --color-surface-mid: oklch(21.0% 0.006 255);
+.excalidraw.excalidraw.theme--dark {
+  --color-selection: oklch(43.1% 0.218 254);
+  --color-primary: oklch(76.0% 0.128 254);
+  --color-primary-darker: oklch(78.5% 0.114 254);
+  --color-primary-darkest: oklch(81.5% 0.098 254);
+  --color-primary-light: oklch(43.6% 0.056 254);
+  --color-primary-light-darker: oklch(39.0% 0.049 254);
+  --color-primary-hover: oklch(81.1% 0.100 254);
+  --color-brand-hover: oklch(81.1% 0.100 254);
+  --color-brand-active: oklch(86.5% 0.070 254);
+  --color-on-primary-container: oklch(91.4% 0.043 254);
+  --color-surface-primary-container: oklch(38.7% 0.074 254);
+  --color-on-surface: oklch(91.7% 0.007 254);
+  --color-surface-high: oklch(31.5% 0.019 254);
+  --color-surface-low: oklch(26.0% 0.011 254);
+  --color-surface-mid: oklch(21.0% 0.006 254);
 }
