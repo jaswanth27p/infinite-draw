@@ -12,7 +12,7 @@ import { FileGridError } from "@/components/file-grid-error";
 import { cn } from "@/lib/utils";
 import type { PaginatedResponse } from "@/lib/file-types";
 
-const GRID_ROW_HEIGHT = 220;
+const GRID_ROW_HEIGHT = 236;
 const LIST_ROW_HEIGHT = 64;
 
 function useColumnCount(el: HTMLDivElement | null) {
@@ -116,7 +116,7 @@ export function VirtualizedFileList<T extends { id: string }>({
         </div>
       )}
       {isPending ? (
-        <FileGridSkeleton />
+        <FileGridSkeleton view={view} />
       ) : isError ? (
         <FileGridError error={error} reset={() => refetch()} message={errorMessage} />
       ) : items.length === 0 ? (
@@ -147,7 +147,7 @@ export function VirtualizedFileList<T extends { id: string }>({
                 >
                   {rowItems.length > 0
                     ? rowItems.map((item) => <div key={item.id}>{renderCard(item, view)}</div>)
-                    : isFetchingNextPage && <FileGridSkeleton />}
+                    : isFetchingNextPage && <FileGridSkeleton view={view} />}
                 </div>
               );
             })}
