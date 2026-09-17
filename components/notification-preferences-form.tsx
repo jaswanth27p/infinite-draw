@@ -1,6 +1,7 @@
 "use client";
 
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotificationPreferences, type NotificationPreferences } from "@/hooks/use-notification-preferences";
 
@@ -26,7 +27,18 @@ const ITEMS: Record<keyof NotificationPreferences, { title: string; description:
 const PREFERENCE_KEYS = Object.keys(ITEMS) as (keyof NotificationPreferences)[];
 
 export function NotificationPreferencesForm() {
-  const { preferences, isLoading, setPreference } = useNotificationPreferences();
+  const { preferences, isLoading, isError, refetch, setPreference } = useNotificationPreferences();
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2.5">
+        <p className="text-sm text-muted-foreground">Couldn&apos;t load your notification preferences.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading || !preferences) {
     return (

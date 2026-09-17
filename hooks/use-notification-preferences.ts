@@ -34,6 +34,8 @@ export function useNotificationPreferences() {
   return {
     preferences: query.data,
     isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
     setPreference: (key: keyof NotificationPreferences, value: boolean) => update.mutate({ [key]: value }),
   };
 }
