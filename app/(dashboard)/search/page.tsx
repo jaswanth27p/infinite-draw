@@ -14,9 +14,9 @@ export default function SearchPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
-      <h1 className="font-heading text-2xl font-semibold tracking-tight">
+      <h2 className="font-heading text-2xl font-semibold tracking-tight">
         {q ? `Search results for "${q}"` : "Search"}
-      </h1>
+      </h2>
       {q.length === 0 ? (
         // useSearchFiles is `enabled: q.length > 0`, so its query stays in
         // a permanent "pending" status for an empty q -- VirtualizedFileList

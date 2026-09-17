@@ -25,7 +25,7 @@ export default function SharedPage() {
         renderCard={(file, view) => <FileCard file={file} view={view} />}
         toolbar={
           <div className="flex items-center gap-2">
-            <div className="relative max-w-xs">
+            <div className="relative w-full max-w-xs">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}

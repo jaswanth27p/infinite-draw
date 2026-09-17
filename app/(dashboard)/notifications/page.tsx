@@ -12,7 +12,7 @@ export default function NotificationsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
+        <h2 className="font-heading text-2xl font-semibold tracking-tight">Notifications</h2>
         {unreadCount > 0 && (
           <button
             type="button"

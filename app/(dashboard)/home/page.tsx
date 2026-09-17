@@ -28,7 +28,7 @@ async function WelcomeSection() {
         <p className="text-sm text-muted-foreground">
           {getGreeting()}, {name}
         </p>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Ready to create something?</h1>
+        <h2 className="font-heading text-2xl font-semibold tracking-tight">Ready to create something?</h2>
       </div>
       <div className="w-48">
         <NewFileButton />
