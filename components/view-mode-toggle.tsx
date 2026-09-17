@@ -12,7 +12,7 @@ interface ViewModeToggleProps {
 
 export function ViewModeToggle({ view, onChange }: ViewModeToggleProps) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+    <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
       <Button
         type="button"
         variant="ghost"
@@ -20,7 +20,10 @@ export function ViewModeToggle({ view, onChange }: ViewModeToggleProps) {
         aria-label="Grid view"
         aria-pressed={view === "grid"}
         onClick={() => onChange("grid")}
-        className={cn(view === "grid" && "bg-accent text-accent-foreground")}
+        className={cn(
+          "text-muted-foreground hover:text-foreground",
+          view === "grid" && "bg-background text-foreground shadow-xs hover:bg-background"
+        )}
       >
         <LayoutGrid className="size-4" />
       </Button>
@@ -31,7 +34,10 @@ export function ViewModeToggle({ view, onChange }: ViewModeToggleProps) {
         aria-label="List view"
         aria-pressed={view === "list"}
         onClick={() => onChange("list")}
-        className={cn(view === "list" && "bg-accent text-accent-foreground")}
+        className={cn(
+          "text-muted-foreground hover:text-foreground",
+          view === "list" && "bg-background text-foreground shadow-xs hover:bg-background"
+        )}
       >
         <List className="size-4" />
       </Button>
