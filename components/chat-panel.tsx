@@ -128,7 +128,7 @@ export function ChatPanel({
   return (
     <div className="absolute top-14 right-2 bottom-2 z-20 flex w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
       <div className="flex items-center justify-between border-b p-3">
-        <span className="text-sm font-semibold">Chat</span>
+        <span className="font-heading text-sm font-semibold">Chat</span>
         <Button variant="ghost" size="icon-sm" aria-label="Close chat" onClick={onClose}>
           <X className="size-4" />
         </Button>
@@ -147,12 +147,14 @@ export function ChatPanel({
             <div
               key={message.id}
               className={`flex max-w-[85%] flex-col gap-0.5 rounded-lg p-2 text-sm ${
-                ownMessageIds.has(message.id) ? "self-end bg-primary/10" : "self-start bg-muted"
+                ownMessageIds.has(message.id)
+                  ? "self-end border border-primary/20 bg-primary/10"
+                  : "self-start bg-muted"
               }`}
             >
               <span className="text-xs font-medium text-muted-foreground">{message.authorName}</span>
               <span>{message.body}</span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {new Date(message.createdAt).toLocaleString()}
               </span>
             </div>
