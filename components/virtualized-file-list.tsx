@@ -12,8 +12,13 @@ import { FileGridError } from "@/components/file-grid-error";
 import { cn } from "@/lib/utils";
 import type { PaginatedResponse } from "@/lib/file-types";
 
-const GRID_ROW_HEIGHT = 236;
-const LIST_ROW_HEIGHT = 64;
+// Initial estimate only — every row is measured from the DOM
+// (`virtualizer.measureElement` below), so these values never determine the
+// final layout. They only bound the pre-measurement first paint.
+const ESTIMATED_GRID_ROW_HEIGHT = 236;
+const ESTIMATED_LIST_ROW_HEIGHT = 56;
+const GRID_ROW_GAP = 16;
+const LIST_ROW_GAP = 8;
 
 function useColumnCount(el: HTMLDivElement | null) {
   const [columns, setColumns] = useState(2);
@@ -88,7 +93,8 @@ export function VirtualizedFileList<T extends { id: string }>({
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollElement,
-    estimateSize: () => (view === "grid" ? GRID_ROW_HEIGHT : LIST_ROW_HEIGHT),
+    estimateSize: () => (view === "grid" ? ESTIMATED_GRID_ROW_HEIGHT : ESTIMATED_LIST_ROW_HEIGHT),
+    gap: view === "grid" ? GRID_ROW_GAP : LIST_ROW_GAP,
     scrollMargin,
     overscan: 5,
   });
@@ -132,12 +138,13 @@ export function VirtualizedFileList<T extends { id: string }>({
               return (
                 <div
                   key={virtualRow.key}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualRow.index}
                   style={{
                     position: "absolute",
                     top: 0,
                     left: 0,
                     width: "100%",
-                    height: virtualRow.size,
                     transform: `translateY(${virtualRow.start - scrollMargin}px)`,
                     ...(view === "grid"
                       ? { display: "grid", gap: "1rem", gridTemplateColumns: `repeat(${effectiveColumns}, minmax(0, 1fr))` }
