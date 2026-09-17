@@ -10,7 +10,7 @@ export default function FileNotFound() {
         <FileQuestion className="size-5 text-muted-foreground" />
       </div>
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">File not found</h2>
+          <h2 className="font-heading text-lg font-semibold">File not found</h2>
         <p className="text-sm text-muted-foreground">
           It may have been deleted, or you don&apos;t have access to it.
         </p>
