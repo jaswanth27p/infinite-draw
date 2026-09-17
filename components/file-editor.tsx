@@ -35,7 +35,7 @@ import { reviveAppStateForLoad } from "@/lib/excalidraw-app-state";
 // TTDDialog (AI text-to-diagram) disabled along with the rest of the AI tools.
 import { CaptureUpdateAction, getSceneVersion, MainMenu, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import type { ExcalidrawImperativeAPI, SocketId } from "@excalidraw/excalidraw/types";
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw),
@@ -118,7 +118,7 @@ function AnonymousFileEditor({ fileId }: { fileId: string }) {
 
 function FileEditorContent({ fileId }: { fileId: string }) {
   const { data, isLoading, isError, error } = useFileQuery(fileId);
-  const { scheduleSave, flush, cancel } = useAutosave(fileId, data?.currentData.files);
+  const { scheduleSave, isSaving, flush, cancel } = useAutosave(fileId, data?.currentData.files);
   const { schedule: scheduleThumbnail, cancel: cancelThumbnail } = useThumbnailAutosave(fileId);
   const { resolvedTheme } = useTheme();
   const { user } = useUser();
@@ -156,6 +156,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   }, []);
   const getLiveAppState = useCallback(() => excalidrawApiRef.current?.getAppState(), []);
   const {
+    collaboratorIds,
     collaborators,
     broadcastElements,
     broadcastPointer,
@@ -319,11 +320,45 @@ function FileEditorContent({ fileId }: { fileId: string }) {
   return (
     <div className="relative flex flex-1 flex-col">
       <div className="flex items-center justify-between gap-2 border-b p-2">
-        <Link href="/home" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          <ArrowLeft className="size-4" />
-          {data!.name}
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to files"
+            render={<Link href="/home" />}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <span className="truncate font-heading text-sm font-medium" title={data!.name}>
+            {data!.name}
+          </span>
+          {isSaving && (
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">Saving…</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
+          {collaboratorIds.length > 0 && (
+            <div className="hidden items-center -space-x-2 sm:flex">
+              {collaboratorIds.slice(0, 3).map((id) => {
+                const username = collaborators.get(id as SocketId)?.username;
+                const initial = username ? username.charAt(0).toUpperCase() : "?";
+                return (
+                  <span
+                    key={id}
+                    title={username ?? undefined}
+                    className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary/15 text-[11px] font-medium text-primary"
+                  >
+                    {initial}
+                  </span>
+                );
+              })}
+              {collaboratorIds.length > 3 && (
+                <span className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted font-mono text-[10px] text-muted-foreground">
+                  +{collaboratorIds.length - 3}
+                </span>
+              )}
+            </div>
+          )}
           {data!.role === "OWNER" && (
             <>
               <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
