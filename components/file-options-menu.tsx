@@ -121,10 +121,13 @@ export function FileOptionsMenu({ fileId, fileName, starred, role, className }: 
             Download
           </DropdownMenuItem>
           {isOwner && (
-            <DropdownMenuItem onClick={() => setRenameOpen(true)}>
-              <Pencil />
-              Rename
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setRenameOpen(true)}>
+                <Pencil />
+                Rename
+              </DropdownMenuItem>
+            </>
           )}
           {isOwner && (
             <>
