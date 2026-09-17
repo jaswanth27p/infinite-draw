@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -160,15 +161,25 @@ export function VersionHistoryPanel({
           <p className="mt-2 px-4 text-sm text-muted-foreground">No matching versions.</p>
         )}
 
-        <ul className="mt-2 flex flex-col gap-2 px-4">
+        <ul className="mt-2 flex flex-col gap-1 px-4">
           {filteredVersions?.map((version) => (
-            <li key={version.id} className="flex items-center justify-between text-sm">
-              <span>
-                {version.name} — {new Date(version.createdAt).toLocaleString()}
-                {version.origin === "AUTO" && (
-                  <span className="ml-2 text-xs text-muted-foreground">Auto</span>
-                )}
-              </span>
+            <li
+              key={version.id}
+              className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-sm">{version.name}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {new Date(version.createdAt).toLocaleString()}
+                  </span>
+                  {version.origin === "AUTO" && (
+                    <span className="rounded-full border border-border px-1.5 py-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Auto
+                    </span>
+                  )}
+                </span>
+              </div>
               {canEdit && (
                 <Button
                   variant="ghost"
@@ -176,6 +187,7 @@ export function VersionHistoryPanel({
                   onClick={() => handleRestore(version.id)}
                   disabled={restoreVersion.isPending}
                 >
+                  <RotateCcw className="size-3.5" />
                   Restore
                 </Button>
               )}
