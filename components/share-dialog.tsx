@@ -31,9 +31,9 @@ function AvatarCircle({
   avatarUrl?: string | null;
 }) {
   if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- external
-    // avatar URL, not a static/local asset; next/image would need a
-    // remotePatterns entry for an arbitrary user-account host.
+    // External avatar URL, not a static/local asset; next/image would need
+    // a remotePatterns entry for an arbitrary user-account host.
+    // eslint-disable-next-line @next/next/no-img-element
     return <img src={avatarUrl} alt="" className="size-7 shrink-0 rounded-full object-cover" />;
   }
   return (

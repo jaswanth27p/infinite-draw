@@ -325,6 +325,7 @@ function FileEditorContent({ fileId }: { fileId: string }) {
             variant="ghost"
             size="icon"
             aria-label="Back to files"
+            nativeButton={false}
             render={<Link href="/home" />}
           >
             <ArrowLeft className="size-4" />

@@ -110,7 +110,7 @@ export function FileCard({ file, view = "grid" }: FileCardProps) {
           </CardContent>
         </Card>
       </Link>
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover/file-card:opacity-100 sm:group-focus-within/file-card:opacity-100">
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-100 transition-opacity duration-150 sm:pointer-events-none sm:opacity-0 sm:group-hover/file-card:pointer-events-auto sm:group-hover/file-card:opacity-100 sm:group-focus-within/file-card:pointer-events-auto sm:group-focus-within/file-card:opacity-100">
         <StarButton fileId={file.id} starred={file.starred} />
         <FileOptionsMenu fileId={file.id} fileName={file.name} starred={file.starred} role={role} />
       </div>
