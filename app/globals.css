@@ -156,3 +156,69 @@
 .excalidraw .HelpDialog__header {
   display: none !important;
 }
+
+/*
+ * Excalidraw ships ~200 theming custom properties on its own `.excalidraw`
+ * root wrapper (see @excalidraw/excalidraw's dist/index.css) as its
+ * documented theming surface — this overrides them to match the app's own
+ * blue accent / neutral scale / font / radius instead of its stock violet
+ * default (`--color-primary: #6965db`), so the canvas chrome and the
+ * surrounding dashboard read as one system. Values are Excalidraw's own
+ * default lightness/chroma per swatch, hue-rotated to 262 (light) / 255
+ * (dark) to match `--primary`'s hue in globals.css's :root/.dark blocks
+ * above — same "rotate hue, keep L/C" technique used for the app's own
+ * neutrals, so every relative contrast relationship Excalidraw already
+ * tuned (hover states, container/text pairs) survives unchanged.
+ */
+.excalidraw,
+.excalidraw .excalidraw-tooltip {
+  --ui-font: var(--font-sans);
+}
+.excalidraw {
+  --border-radius-md: var(--radius-md);
+  --border-radius-lg: var(--radius-lg);
+  --color-selection: oklch(57.2% 0.175 262);
+  --color-primary: oklch(57.2% 0.175 262);
+  --color-primary-darker: oklch(52.9% 0.183 262);
+  --color-primary-darkest: oklch(46.4% 0.164 262);
+  --color-primary-light: oklch(92.2% 0.038 262);
+  --color-primary-light-darker: oklch(88.8% 0.057 262);
+  --color-primary-hover: oklch(51.9% 0.187 262);
+  --color-brand-hover: oklch(51.9% 0.187 262);
+  --color-brand-active: oklch(45.9% 0.192 262);
+  --color-on-primary-container: oklch(22.9% 0.156 262);
+  --color-surface-primary-container: oklch(91.4% 0.043 262);
+  --color-surface-high: oklch(96.0% 0.020 262);
+  --color-surface-mid: oklch(96.3% 0.007 262);
+  --color-surface-low: oklch(94.5% 0.011 262);
+  --color-on-surface: oklch(22.4% 0.008 262);
+  --color-gray-10: oklch(97.0% 0.004 262);
+  --color-gray-20: oklch(94.0% 0.004 262);
+  --color-gray-30: oklch(87.6% 0.004 262);
+  --color-gray-40: oklch(78.3% 0.004 262);
+  --color-gray-50: oklch(68.3% 0.004 262);
+  --color-gray-60: oklch(58.0% 0.004 262);
+  --color-gray-70: oklch(47.5% 0.004 262);
+  --color-gray-80: oklch(36.0% 0.004 262);
+  --color-gray-85: oklch(26.0% 0.004 262);
+  --color-gray-90: oklch(23.5% 0.004 262);
+  --color-gray-100: oklch(18.2% 0.004 262);
+}
+
+.excalidraw.theme--dark {
+  --color-selection: oklch(43.1% 0.218 255);
+  --color-primary: oklch(76.0% 0.128 255);
+  --color-primary-darker: oklch(78.5% 0.114 255);
+  --color-primary-darkest: oklch(81.5% 0.098 255);
+  --color-primary-light: oklch(43.6% 0.056 255);
+  --color-primary-light-darker: oklch(39.0% 0.049 255);
+  --color-primary-hover: oklch(81.1% 0.100 255);
+  --color-brand-hover: oklch(81.1% 0.100 255);
+  --color-brand-active: oklch(86.5% 0.070 255);
+  --color-on-primary-container: oklch(91.4% 0.043 255);
+  --color-surface-primary-container: oklch(38.7% 0.074 255);
+  --color-on-surface: oklch(91.7% 0.007 255);
+  --color-surface-high: oklch(31.5% 0.019 255);
+  --color-surface-low: oklch(26.0% 0.011 255);
+  --color-surface-mid: oklch(21.0% 0.006 255);
+}
