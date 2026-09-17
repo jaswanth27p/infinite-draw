@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -64,16 +63,21 @@ export function RenameFileDialog({ fileId, currentName, open, onOpenChange }: Re
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Rename file</DialogTitle>
-          <DialogDescription>Choose a new name for this file.</DialogDescription>
         </DialogHeader>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSave();
-          }}
-          autoFocus
-        />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="rename-file-name" className="text-sm font-medium leading-none">
+            File name
+          </label>
+          <Input
+            id="rename-file-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+            }}
+            autoFocus
+          />
+        </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
